@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Shop TV Workout</title>
 <style>
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#0b0b0b;color:#f5f5f5;font-family:Arial,Helvetica,sans-serif;display:flex;align-items:center;justify-content:center;padding:5vw}.screen{width:min(1400px,100%)}.hello{font-size:clamp(24px,3vw,52px);font-weight:700;letter-spacing:.08em}.date{font-size:clamp(20px,2.4vw,40px);color:#aaa;margin-top:10px}.title{font-size:clamp(42px,7vw,110px);font-weight:800;margin:6vh 0 4vh}.exercise{font-size:clamp(28px,4vw,64px);padding:18px 0;border-bottom:1px solid #333}.rest{font-size:clamp(60px,10vw,150px);font-weight:800;margin-top:8vh}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#0b0b0b;color:#f5f5f5;font-family:Arial,Helvetica,sans-serif;display:flex;align-items:center;justify-content:center;padding:5vw}.screen{width:min(1400px,100%)}.hello{font-size:clamp(24px,3vw,52px);font-weight:700;letter-spacing:.08em}.date{font-size:clamp(20px,2.4vw,40px);color:#aaa;margin-top:10px}.title{font-size:clamp(42px,7vw,110px);font-weight:800;margin:6vh 0 4vh}.exercise{font-size:clamp(28px,4vw,64px);padding:18px 0;border-bottom:1px solid #333}.rest{font-size:clamp(60px,10vw,150px);font-weight:800;margin-top:8vh}.dev{position:fixed;right:18px;bottom:18px;display:flex;gap:8px;opacity:.28;transition:.2s}.dev:hover{opacity:1}.dev button{background:#222;color:#ddd;border:1px solid #555;border-radius:8px;padding:10px 14px;font-size:16px;cursor:pointer}.preview{position:fixed;right:18px;top:18px;color:#888;font-size:14px}
 </style>
 </head>
 <body>
@@ -14,15 +14,25 @@
 <div class="date" id="date"></div>
 <div id="workout"></div>
 </main>
+<div class="preview" id="preview"></div>
+<div class="dev"><button onclick="changeDay(-1)">◀ Day</button><button onclick="useToday()">Today</button><button onclick="changeDay(1)">Day ▶</button></div>
 <script>
-const workouts={
-Monday:["Dumbbell Press — 3 × 10","Dumbbell Incline Press — 3 × 10"],
-Tuesday:[],Wednesday:[],Thursday:[],Friday:[],Saturday:[],Sunday:[]};
-const now=new Date();
-const day=now.toLocaleDateString("en-US",{weekday:"long"});
-document.getElementById("date").textContent=now.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
-const root=document.getElementById("workout"),items=workouts[day]||[];
-if(items.length){root.innerHTML='<div class="title">TODAY’S WORKOUT</div>'+items.map(x=>'<div class="exercise">'+x+'</div>').join('')}else{root.innerHTML='<div class="rest">REST DAY</div>'}
+const workouts={Monday:["Dumbbell Press — 3 × 10","Dumbbell Incline Press — 3 × 10"],Tuesday:[],Wednesday:[],Thursday:[],Friday:[],Saturday:[],Sunday:[]};
+const days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const realNow=new Date();
+let selectedDay=new URLSearchParams(location.search).get("day");
+if(!days.includes(selectedDay)) selectedDay=days[realNow.getDay()];
+function render(){
+ const isToday=selectedDay===days[realNow.getDay()];
+ document.getElementById("date").textContent=isToday?realNow.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"}):selectedDay+" — PREVIEW";
+ document.getElementById("preview").textContent=isToday?"":"TEST MODE";
+ const items=workouts[selectedDay]||[],root=document.getElementById("workout");
+ root.innerHTML=items.length?'<div class="title">TODAY’S WORKOUT</div>'+items.map(x=>'<div class="exercise">'+x+'</div>').join(''):'<div class="rest">REST DAY</div>';
+}
+function setDay(day){selectedDay=day;const u=new URL(location.href);u.searchParams.set("day",day);history.replaceState({},"",u);render()}
+function changeDay(delta){let i=days.indexOf(selectedDay);setDay(days[(i+delta+7)%7])}
+function useToday(){selectedDay=days[realNow.getDay()];const u=new URL(location.href);u.searchParams.delete("day");history.replaceState({},"",u);render()}
+render();
 </script>
 </body>
 </html>
