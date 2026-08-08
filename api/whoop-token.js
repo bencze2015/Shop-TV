@@ -11,6 +11,11 @@ export default async function handler(req, res) {
     const text = await response.text();
     let data; try { data=JSON.parse(text); } catch { data={raw:text}; }
     if (!response.ok) return res.status(response.status).json({ error:'WHOOP token exchange failed', details:data });
-    return res.status(200).json(data);
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    const cookies = [];
+    if (data.access_token) cookies.push(`whoop_access=${encodeURIComponent(data.access_token)}; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=${Number(data.expires_in || 3600)}`);
+    if (data.refresh_token) cookies.push(`whoop_refresh=${encodeURIComponent(data.refresh_token)}; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=2592000`);
+    if (cookies.length) res.setHeader('Set-Cookie', cookies);
+    return res.status(200).json({ connected:true, expires_in:data.expires_in || null, scope:data.scope || null });
   } catch (error) { return res.status(500).json({ error:'Token exchange request failed', details:String(error?.message||error) }); }
 }
