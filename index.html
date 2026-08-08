@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shop TV Workout</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#0b0b0b;color:#f5f5f5;font-family:Arial,Helvetica,sans-serif;display:flex;align-items:center;justify-content:center;padding:5vw}.screen{width:min(1400px,100%)}.hello{font-size:clamp(24px,3vw,52px);font-weight:700;letter-spacing:.08em}.date{font-size:clamp(20px,2.4vw,40px);color:#aaa;margin-top:10px}.title{font-size:clamp(42px,7vw,110px);font-weight:800;margin:6vh 0 4vh}.exercise{font-size:clamp(28px,4vw,64px);padding:18px 0;border-bottom:1px solid #333}.rest{font-size:clamp(60px,10vw,150px);font-weight:800;margin-top:8vh}
+</style>
+</head>
+<body>
+<main class="screen">
+<div class="hello">HELLO, JORDAN</div>
+<div class="date" id="date"></div>
+<div id="workout"></div>
+</main>
+<script>
+const workouts={
+Monday:["Bench Press — 4 × 8","Pull-Ups — 4 × 8","Overhead Press — 3 × 10","Rows — 3 × 10"],
+Tuesday:["Squat — 4 × 8","Romanian Deadlift — 3 × 10","Walking Lunges — 3 × 10 each leg","Calf Raises — 3 × 15"],
+Wednesday:[],
+Thursday:["Incline Bench Press — 4 × 8","Lat Pulldown — 4 × 10","Dumbbell Shoulder Press — 3 × 10","Cable Row — 3 × 10"],
+Friday:["Deadlift — 3 × 5","Leg Press — 4 × 10","Hamstring Curl — 3 × 12","Calf Raises — 3 × 15"],
+Saturday:[],Sunday:[]};
+const now=new Date();
+const day=now.toLocaleDateString("en-US",{weekday:"long"});
+document.getElementById("date").textContent=now.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+const root=document.getElementById("workout"),items=workouts[day]||[];
+if(items.length){root.innerHTML='<div class="title">TODAY’S WORKOUT</div>'+items.map(x=>'<div class="exercise">'+x+'</div>').join('')}else{root.innerHTML='<div class="rest">REST DAY</div>'}
+</script>
+</body>
+</html>
