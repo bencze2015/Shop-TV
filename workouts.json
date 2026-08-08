@@ -1,0 +1,32 @@
+{
+  "programName": "Shop Training",
+  "week": {
+    "Monday": {
+      "name": "Chest",
+      "exercises": [
+        {
+          "id": "dumbbell-press",
+          "name": "Dumbbell Press",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 90,
+          "progression": {"type": "double-progression", "repMin": 8, "repMax": 12, "weightStepLb": 5}
+        },
+        {
+          "id": "dumbbell-incline-press",
+          "name": "Dumbbell Incline Press",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 90,
+          "progression": {"type": "double-progression", "repMin": 8, "repMax": 12, "weightStepLb": 5}
+        }
+      ]
+    },
+    "Tuesday": {"name": "Rest", "exercises": []},
+    "Wednesday": {"name": "Rest", "exercises": []},
+    "Thursday": {"name": "Rest", "exercises": []},
+    "Friday": {"name": "Rest", "exercises": []},
+    "Saturday": {"name": "Rest", "exercises": []},
+    "Sunday": {"name": "Rest", "exercises": []}
+  }
+}
