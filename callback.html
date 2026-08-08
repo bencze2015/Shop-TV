@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WHOOP Authorization</title>
+<style>
+body{margin:0;min-height:100vh;background:#0b0b0b;color:#f5f5f5;font-family:Arial,Helvetica,sans-serif;display:flex;align-items:center;justify-content:center;padding:32px}.card{max-width:760px;width:100%;border:1px solid #333;border-radius:16px;padding:32px}h1{margin-top:0}.muted{color:#aaa}code{word-break:break-all;color:#ddd}.error{color:#ff9a9a}
+</style>
+</head>
+<body>
+<div class="card">
+<h1 id="title">WHOOP authorization received</h1>
+<p id="message">Checking the OAuth response…</p>
+<div id="details" class="muted"></div>
+</div>
+<script>
+const params=new URLSearchParams(location.search);
+const code=params.get('code');
+const state=params.get('state');
+const error=params.get('error');
+const errorDescription=params.get('error_description');
+const title=document.getElementById('title');
+const message=document.getElementById('message');
+const details=document.getElementById('details');
+if(error){
+ title.textContent='WHOOP authorization failed';
+ message.className='error';
+ message.textContent=errorDescription||error;
+}else if(code){
+ title.textContent='WHOOP authorization successful';
+ message.textContent='The authorization code was returned successfully. The next step is exchanging it for WHOOP access and refresh tokens on the server.';
+ details.innerHTML='<p>State: <code>'+String(state||'').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))+'</code></p>';
+}else{
+ title.textContent='WHOOP callback is ready';
+ message.textContent='No authorization code is present yet. Start the WHOOP authorization flow and WHOOP will return here.';
+}
+</script>
+</body>
+</html>
