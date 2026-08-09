@@ -4,55 +4,49 @@
     "jordan": {
       "name": "Jordan",
       "week": {
-        "Monday":{"name":"Rest","exercises":[]},
-        "Tuesday":{"name":"Pull","exercises":[
+        "Monday": {"name":"Push","exercises":[
+          {"id":"db-bench-press","name":"Dumbbell Bench Press","sets":3,"reps":"8–12","restSeconds":90},
+          {"id":"db-incline-press","name":"Incline Dumbbell Press","sets":3,"reps":"8–12","restSeconds":90},
+          {"id":"db-lateral-raise","name":"Dumbbell Lateral Raise","sets":3,"reps":"12–15","restSeconds":60}
+        ]},
+        "Tuesday": {"name":"Rest","exercises":[]},
+        "Wednesday": {"name":"Pull","exercises":[
           {"id":"pullups","name":"Pull-Ups","sets":3,"reps":"6–10","restSeconds":120},
           {"id":"db-row","name":"One-Arm Dumbbell Row","sets":3,"reps":"8–12 / side","restSeconds":90},
           {"id":"db-curl","name":"Dumbbell Curl","sets":3,"reps":"8–12","restSeconds":60}
         ]},
-        "Wednesday":{"name":"Rest","exercises":[]},
-        "Thursday":{"name":"Legs","exercises":[
+        "Thursday": {"name":"Rest","exercises":[]},
+        "Friday": {"name":"Legs","exercises":[
           {"id":"db-goblet-squat","name":"Elevated Goblet Squat","sets":4,"reps":"8–12","restSeconds":120},
           {"id":"db-rdl","name":"Dumbbell Romanian Deadlift","sets":3,"reps":"8–12","restSeconds":120},
           {"id":"db-bulgarian","name":"Bulgarian Split Squat","sets":3,"reps":"8–12 / leg","restSeconds":90}
         ]},
-        "Friday":{"name":"Rest","exercises":[]},
-        "Saturday":{"name":"Rest","exercises":[]},
-        "Sunday": {"name":"Push","exercises":[
-          {"id":"db-bench-press","name":"Dumbbell Bench Press","sets":3,"reps":"8–12","restSeconds":90},
-          {"id":"db-incline-press","name":"Incline Dumbbell Press","sets":3,"reps":"8–12","restSeconds":90},
-          {"id":"db-lateral-raise","name":"Dumbbell Lateral Raise","sets":3,"reps":"12–15","restSeconds":60}
-        ]}
+        "Saturday": {"name":"Rest","exercises":[]},
+        "Sunday": {"name":"Rest","exercises":[]}
       }
     },
     "kelsey": {
       "name": "Kelsey",
       "week": {
-        "Monday":{"name":"Rest","exercises":[]},
-        "Tuesday":{"name":"Pull","exercises":[
-          {"id":"band-assisted-pullup","name":"Band-Assisted Pull-Up","sets":3,"reps":"6–10","restSeconds":120},
-          {"id":"db-row","name":"One-Arm Dumbbell Row","sets":3,"reps":"8–12 / side","restSeconds":90},
-          {"id":"db-rear-delt","name":"Rear-Delt Dumbbell Fly","sets":3,"reps":"12–15","restSeconds":60},
-          {"id":"band-face-pull","name":"Band Face Pull","sets":3,"reps":"12–20","restSeconds":60},
-          {"id":"db-curl","name":"Dumbbell Curl","sets":3,"reps":"8–12","restSeconds":60}
-        ]},
-        "Wednesday":{"name":"Rest","exercises":[]},
-        "Thursday":{"name":"Legs","exercises":[
-          {"id":"db-goblet-squat","name":"Elevated Goblet Squat","sets":4,"reps":"8–12","restSeconds":120},
-          {"id":"db-rdl","name":"Dumbbell Romanian Deadlift","sets":3,"reps":"8–12","restSeconds":120},
-          {"id":"db-bulgarian","name":"Bulgarian Split Squat","sets":3,"reps":"8–12 / leg","restSeconds":90},
-          {"id":"db-hip-thrust","name":"Dumbbell Hip Thrust","sets":3,"reps":"10–15","restSeconds":90},
-          {"id":"db-calf","name":"Elevated Dumbbell Calf Raise","sets":3,"reps":"12–20","restSeconds":60}
-        ]},
-        "Friday":{"name":"Rest","exercises":[]},
-        "Saturday":{"name":"Rest","exercises":[]},
-        "Sunday": {"name":"Push","exercises":[
+        "Monday": {"name":"Push","exercises":[
           {"id":"db-bench-press","name":"Dumbbell Bench Press","sets":3,"reps":"8–12","restSeconds":90},
           {"id":"db-incline-press","name":"Incline Dumbbell Press","sets":3,"reps":"8–12","restSeconds":90},
-          {"id":"db-shoulder-press","name":"Dumbbell Shoulder Press","sets":3,"reps":"8–12","restSeconds":90},
-          {"id":"db-lateral-raise","name":"Dumbbell Lateral Raise","sets":3,"reps":"12–15","restSeconds":60},
-          {"id":"band-triceps","name":"Band Triceps Extension","sets":3,"reps":"10–15","restSeconds":60}
-        ]}
+          {"id":"db-lateral-raise","name":"Dumbbell Lateral Raise","sets":3,"reps":"12–15","restSeconds":60}
+        ]},
+        "Tuesday": {"name":"Rest","exercises":[]},
+        "Wednesday": {"name":"Pull","exercises":[
+          {"id":"band-assisted-pullup","name":"Band-Assisted Pull-Up","sets":3,"reps":"6–10","restSeconds":120},
+          {"id":"db-row","name":"One-Arm Dumbbell Row","sets":3,"reps":"8–12 / side","restSeconds":90},
+          {"id":"db-curl","name":"Dumbbell Curl","sets":3,"reps":"8–12","restSeconds":60}
+        ]},
+        "Thursday": {"name":"Rest","exercises":[]},
+        "Friday": {"name":"Legs","exercises":[
+          {"id":"db-goblet-squat","name":"Elevated Goblet Squat","sets":4,"reps":"8–12","restSeconds":120},
+          {"id":"db-rdl","name":"Dumbbell Romanian Deadlift","sets":3,"reps":"8–12","restSeconds":120},
+          {"id":"db-bulgarian","name":"Bulgarian Split Squat","sets":3,"reps":"8–12 / leg","restSeconds":90}
+        ]},
+        "Saturday": {"name":"Rest","exercises":[]},
+        "Sunday": {"name":"Rest","exercises":[]}
       }
     }
   }
