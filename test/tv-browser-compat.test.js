@@ -89,11 +89,17 @@ test('the shared training week starts with Push on Sunday', async () => {
 
   for (const profile of Object.values(workouts.profiles)) {
     assert.equal(profile.week.Sunday.name, 'Push');
-    assert.equal(profile.week.Sunday.exercises.length, 5);
     assert.equal(profile.week.Tuesday.name, 'Pull');
     assert.equal(profile.week.Thursday.name, 'Legs');
     assert.equal(profile.week.Monday.name, 'Rest');
   }
+  assert.deepEqual(
+    workouts.profiles.jordan.week.Sunday.exercises.map((exercise) => exercise.name),
+    ['Dumbbell Bench Press', 'Incline Dumbbell Press', 'Dumbbell Lateral Raise']
+  );
+  assert.equal(workouts.profiles.jordan.week.Tuesday.exercises.length, 3);
+  assert.equal(workouts.profiles.jordan.week.Thursday.exercises.length, 3);
+  assert.equal(workouts.profiles.kelsey.week.Sunday.exercises.length, 5);
 });
 
 test('TV client renders training, rest, progress, WHOOP, and set completion flows', async () => {
@@ -167,7 +173,7 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
   assert.match(elements.content.innerHTML, /Track individual sets/);
   assert.match(elements.content.innerHTML, /Dumbbell Bench Press/);
   assert.match(elements.content.innerHTML, /Est\. time/);
-  assert.equal((elements.content.innerHTML.match(/class="ambient-move /g) || []).length, 5);
+  assert.equal((elements.content.innerHTML.match(/class="ambient-move /g) || []).length, 3);
 
   context.setTrackingMode('sets');
   assert.match(elements.content.innerHTML, /PUSH SESSION/);
