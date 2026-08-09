@@ -103,6 +103,7 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
   const requests = [];
   const storage = new Map();
   const TestDate = mutableDate('2026-08-09T12:00:00-07:00');
+  storage.set('shopSessionUI:jordan:2026-08-09', JSON.stringify({ selectedDay: 'Monday' }));
 
   class FakeXmlHttpRequest {
     open(_method, url) {
@@ -140,7 +141,7 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
       addEventListener() {}
     },
     history: { replaceState() {} },
-    location: { search: '', pathname: '/' },
+    location: { search: '?day=Monday', pathname: '/' },
     localStorage: {
       getItem: (key) => storage.get(key) || null,
       setItem: (key, value) => storage.set(key, value)
@@ -236,7 +237,7 @@ test('five-way remote navigation, timer persistence, auto-advance, and undo work
       }
     },
     history: { replaceState() {} },
-    location: { search: '?day=Sunday', pathname: '/' },
+    location: { search: '?day=Sunday&preview=1', pathname: '/' },
     localStorage: {
       getItem: (key) => storage.get(key) || null,
       setItem: (key, value) => storage.set(key, value)

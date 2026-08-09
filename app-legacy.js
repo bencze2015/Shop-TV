@@ -4,7 +4,7 @@
   var TRAINING_DAY_START_HOUR = 7;
   var WHOOP_POLL_MS = 5 * 60 * 1000;
   var CELEBRATION_MS = 45 * 1000;
-  var requestedDay = queryValue('day');
+  var requestedDay = queryValue('preview') === '1' ? queryValue('day') : null;
   var selectedDay = requestedDay;
   var data = { profiles: {} };
   var profileId = readStorage('shopProfile') || 'jordan';
@@ -138,9 +138,6 @@
   function restoreUiState() {
     var saved = parseStoredJson(uiStateKey(), null);
     if (!saved) return;
-    if (days.indexOf(requestedDay) < 0 && days.indexOf(saved.selectedDay) >= 0) {
-      selectedDay = saved.selectedDay;
-    }
     if (typeof saved.selectedExercise === 'number' && saved.selectedExercise >= 0) {
       selectedExercise = saved.selectedExercise;
     }
@@ -1117,7 +1114,7 @@
   }
 
   function updateDayUrl(day) {
-    var target = location.pathname + (day ? '?day=' + encodeURIComponent(day) : '');
+    var target = location.pathname;
     if (window.history && history.replaceState) history.replaceState({}, '', target);
   }
 
