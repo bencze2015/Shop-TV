@@ -36,6 +36,8 @@ test('CSS includes fallbacks for unsupported Samsung TV features', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 
   assert.match(html, /body\{[^}]*padding:48px;padding:clamp/);
+  assert.match(html, /\.screen\{width:100%;margin:0\}/);
+  assert.doesNotMatch(html, /max-width:(?:1000|1100|1420)px/);
   assert.match(html, /\.hello\{[^}]*font-size:48px;font-size:clamp/);
   assert.match(html, /\.whoop\{[^}]*display:flex;[^}]*display:grid/);
   assert.match(html, /\.exercise\{[^}]*display:flex;display:grid/);
