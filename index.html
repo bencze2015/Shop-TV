@@ -89,6 +89,33 @@
     .set-dot.done{border-color:#a9ffcf;background:#a9ffcf}
     .set-count{width:48px;margin-left:15px;color:#aeb7b2;font-size:13px;font-weight:800;text-align:right}
 
+    .ambient-layout{flex:1;min-height:0;display:flex}
+    .ambient-plan{width:68%;min-height:0;margin-right:14px;display:flex;flex-direction:column;border:1px solid #232c28;border-radius:18px;background:#0c100f;overflow:hidden}
+    .ambient-move{position:relative;flex:1;min-height:0;display:flex;align-items:center;padding:8px 18px;border-bottom:1px solid #202824}
+    .ambient-move:last-child{border-bottom:0}
+    .ambient-move:before{content:"";position:absolute;left:0;top:20%;bottom:20%;width:3px;border-radius:0 4px 4px 0;background:#334039}
+    .ambient-move.complete:before{background:#a9ffcf;box-shadow:0 0 14px rgba(169,255,207,.22)}
+    .ambient-move.complete{opacity:.72}
+    .ambient-number{flex:0 0 44px;color:#66716b;font-size:10px;font-weight:850;letter-spacing:.12em}
+    .ambient-name{min-width:0;flex:1;color:#edf1ee;font-size:18px;font-size:clamp(15px,1.35vw,21px);font-weight:730;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ambient-prescription{flex:0 0 auto;margin-left:18px;color:#87918c;font-size:11px;font-weight:750;letter-spacing:.04em}
+    .ambient-check{flex:0 0 32px;margin-left:18px;color:#a9ffcf;font-size:18px;text-align:right}
+    .ambient-panel{position:relative;width:32%;min-height:0;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;border:1px solid #2a3530;border-radius:18px;background:linear-gradient(150deg,#18211d 0,#101613 55%,#0c100f 100%);padding:24px}
+    .ambient-panel:after{content:"";position:absolute;right:-80px;top:-100px;width:220px;height:220px;border:1px solid rgba(169,255,207,.12);border-radius:50%;box-shadow:0 0 70px rgba(85,184,127,.08)}
+    .ambient-panel.complete{border-color:#436b57;background:linear-gradient(150deg,#193025 0,#111b16 58%,#0c100f 100%)}
+    .ambient-status{position:relative;z-index:1}
+    .ambient-eyebrow{color:#7f8a84;font-size:9px;font-weight:850;letter-spacing:.18em;text-transform:uppercase}
+    .ambient-state{max-width:360px;margin-top:10px;color:#f1f5f2;font-size:31px;font-size:clamp(25px,2.35vw,37px);font-weight:790;letter-spacing:-.05em;line-height:.95}
+    .ambient-state.done{color:#a9ffcf}
+    .ambient-copy{max-width:350px;margin-top:12px;color:#8b9590;font-size:11px;line-height:1.45}
+    .ambient-source{margin-top:11px;color:#a9ffcf;font-size:10px;font-weight:780;letter-spacing:.08em;text-transform:uppercase}
+    .ambient-actions{position:relative;z-index:1}
+    .ambient-action{width:100%;display:flex;align-items:center;justify-content:space-between;margin-top:8px;border:1px solid #35423c;border-radius:11px;background:#121a16;color:#dbe3de;padding:12px 14px;font-size:10px;font-weight:850;letter-spacing:.11em;text-transform:uppercase;cursor:pointer;text-align:left}
+    .ambient-action.primary{border-color:#a9ffcf;background:#a9ffcf;color:#0b110e}
+    .ambient-action.remote-focus{outline:3px solid #f3fff8;outline-offset:3px;box-shadow:0 0 25px rgba(169,255,207,.24)}
+    .ambient-action span{font-size:17px;font-weight:500}
+    .ambient-auto{margin-top:10px;color:#65706a;font-size:9px;font-weight:700;line-height:1.35}
+
     .rest-layout{flex:1;min-height:0;display:flex}
     .rest-hero{width:40%;height:100%;margin-right:14px;border:1px solid #26302b;border-radius:18px;background:#101513;padding:26px 28px;display:flex;flex-direction:column;justify-content:space-between}
     .rest-word{font-size:68px;font-size:clamp(52px,5vw,82px);font-weight:800;letter-spacing:-.065em;line-height:.84}
@@ -144,6 +171,14 @@
     .day-nav button.today{color:#dfe6e2;border-color:#3b4942}
     .toast{position:fixed;z-index:20;left:50%;bottom:48px;display:none;min-width:280px;padding:11px 16px;border:1px solid #46564e;border-radius:999px;background:#121915;color:#dfe7e2;font-size:10px;font-weight:850;letter-spacing:.1em;text-align:center;text-transform:uppercase;transform:translateX(-50%);box-shadow:0 12px 40px rgba(0,0,0,.45)}
     .toast.visible{display:block}
+    .celebration{position:fixed;z-index:100;top:0;right:0;bottom:0;left:0;display:none;align-items:center;justify-content:center;background:#07100b;background:radial-gradient(circle at 50% 40%,#254a35 0,#10241a 34%,#070b09 72%);text-align:center;cursor:pointer}
+    .celebration.visible{display:flex}
+    .celebration-inner{position:relative;padding:40px}
+    .celebration-mark{width:76px;height:76px;margin:0 auto 26px;border:2px solid #a9ffcf;border-radius:50%;color:#a9ffcf;font-size:42px;line-height:70px;box-shadow:0 0 55px rgba(169,255,207,.2)}
+    .celebration-kicker{color:#a9ffcf;font-size:11px;font-weight:850;letter-spacing:.28em;text-transform:uppercase}
+    .celebration-title{margin-top:14px;color:#f3f7f4;font-size:70px;font-size:clamp(50px,6vw,92px);font-weight:820;letter-spacing:-.07em;line-height:.86}
+    .celebration-meta{margin-top:22px;color:#9da8a2;font-size:15px;font-weight:650}
+    .celebration-dismiss{margin-top:35px;color:#617068;font-size:9px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
 
     @media(max-height:760px) and (min-width:901px){
       body{padding:20px 30px}
@@ -163,6 +198,10 @@
       .set-track{margin-top:10px}
       .focus-hint{margin-top:9px}
       .exercise{margin-bottom:5px}
+      .ambient-panel{padding:18px}
+      .ambient-state{margin-top:7px;font-size:27px}
+      .ambient-copy{margin-top:8px}
+      .ambient-action{padding:9px 12px}
       .footerbar{margin-top:6px}
     }
 
@@ -170,13 +209,16 @@
       html,body{height:auto;overflow:auto}
       body{height:auto;min-height:100vh;padding:20px}
       .screen{height:auto;min-height:100vh}
-      .topbar,.training-layout,.rest-layout,.progress-layout{display:block}
+      .topbar,.training-layout,.ambient-layout,.rest-layout,.progress-layout{display:block}
       .toolbar{margin-top:16px;justify-content:flex-start;flex-wrap:wrap}
       .toolbar-group{margin:8px 8px 0 0}
       .whoop{height:auto;flex-wrap:wrap}
       .metric{min-width:50%;border-bottom:1px solid #202723}
       .workspace{overflow:visible}
       .focus-card,.session-list,.rest-hero,.rest-side,.progress-kpis,.history-panel{width:100%;height:auto}
+      .ambient-plan,.ambient-panel{width:100%;height:auto}
+      .ambient-plan{margin-right:0;margin-bottom:12px}
+      .ambient-move{min-height:56px}
       .focus-card,.rest-hero,.progress-kpis{margin:0 0 12px}
       .focus-card{min-height:330px}
       .exercise{min-height:64px}
@@ -222,6 +264,15 @@
     </footer>
   </main>
   <div class="toast" id="toast"></div>
+  <div class="celebration" id="celebration" onclick="dismissCelebration()">
+    <div class="celebration-inner">
+      <div class="celebration-mark">✓</div>
+      <div class="celebration-kicker" id="celebrationSource">Workout complete</div>
+      <div class="celebration-title" id="celebrationTitle">SESSION COMPLETE</div>
+      <div class="celebration-meta" id="celebrationMeta"></div>
+      <div class="celebration-dismiss">Enter or Back to return · closes automatically</div>
+    </div>
+  </div>
   <script src="/app-legacy.js"></script>
 </body>
 </html>

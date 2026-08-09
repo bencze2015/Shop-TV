@@ -1,7 +1,9 @@
 (function () {
   var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   var weekOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  var realNow = new Date();
+  var TRAINING_DAY_START_HOUR = 7;
+  var WHOOP_POLL_MS = 5 * 60 * 1000;
+  var CELEBRATION_MS = 45 * 1000;
   var requestedDay = queryValue('day');
   var selectedDay = requestedDay;
   var data = { profiles: {} };
@@ -10,7 +12,9 @@
   var whoopData = null;
   var view = 'today';
   var selectedExercise = 0;
-  var focusZone = 'workout';
+  var focusZone = 'ambient';
+  var trackingMode = 'ambient';
+  var ambientAction = 0;
   var toolbarIndex = 2;
   var restTimerEnd = 0;
   var restTimerDuration = 0;
@@ -19,6 +23,9 @@
   var audioContext = null;
   var wakeLock = null;
   var toastTimeout = null;
+  var celebrationTimeout = null;
+  var celebrationVisible = false;
+  var activeTrainingDateKey = null;
   var WHOOP_AUTH = '/api/whoop-connect';
 
   var elements = {
@@ -35,11 +42,15 @@
     whoop: byId('whoop'),
     content: byId('content'),
     controlHint: byId('controlHint'),
-    toast: byId('toast')
+    toast: byId('toast'),
+    celebration: byId('celebration'),
+    celebrationSource: byId('celebrationSource'),
+    celebrationTitle: byId('celebrationTitle'),
+    celebrationMeta: byId('celebrationMeta')
   };
   var toolbarElements = [elements.jordanBtn, elements.kelseyBtn, elements.todayTab, elements.progressTab];
 
-  if (days.indexOf(selectedDay) < 0) selectedDay = days[realNow.getDay()];
+  if (days.indexOf(selectedDay) < 0) selectedDay = trainingDayName();
 
   function byId(id) {
     return document.getElementById(id);
@@ -82,8 +93,18 @@
     return date.getFullYear() + '-' + pad2(date.getMonth() + 1) + '-' + pad2(date.getDate());
   }
 
+  function trainingDate(now) {
+    var value = now ? new Date(now.getTime()) : new Date();
+    value.setHours(value.getHours() - TRAINING_DAY_START_HOUR);
+    return value;
+  }
+
+  function trainingDayName() {
+    return days[trainingDate().getDay()];
+  }
+
   function todayKey() {
-    return dateKey(realNow);
+    return dateKey(trainingDate());
   }
 
   function stateKey() {
@@ -102,6 +123,8 @@
     writeStorage(uiStateKey(), JSON.stringify({
       selectedDay: selectedDay,
       selectedExercise: selectedExercise,
+      trackingMode: trackingMode,
+      ambientAction: ambientAction,
       view: view,
       focusZone: focusZone,
       toolbarIndex: toolbarIndex,
@@ -122,7 +145,11 @@
       selectedExercise = saved.selectedExercise;
     }
     if (saved.view === 'today' || saved.view === 'progress') view = saved.view;
-    if (saved.focusZone === 'workout' || saved.focusZone === 'day' || saved.focusZone === 'toolbar') {
+    if (saved.trackingMode === 'ambient' || saved.trackingMode === 'sets') {
+      trackingMode = saved.trackingMode;
+    }
+    if (saved.ambientAction === 0 || saved.ambientAction === 1) ambientAction = saved.ambientAction;
+    if (saved.focusZone === 'ambient' || saved.focusZone === 'workout' || saved.focusZone === 'day' || saved.focusZone === 'toolbar') {
       focusZone = saved.focusZone;
     }
     if (typeof saved.toolbarIndex === 'number' && saved.toolbarIndex >= 0 && saved.toolbarIndex < 4) {
@@ -286,6 +313,12 @@
     return parseStoredJson(stateKey(), { sets: {}, completed: false });
   }
 
+  function loadDisplayState() {
+    return selectedDay === trainingDayName()
+      ? loadState()
+      : { sets: {}, completed: false };
+  }
+
   function saveState(state) {
     var history;
     var plan;
@@ -299,7 +332,7 @@
         if (history[index].date === todayKey()) found = true;
       }
       if (!found) {
-        plan = planFor(days[realNow.getDay()]);
+        plan = planFor(trainingDayName());
         history.unshift({ date: todayKey(), name: plan.name });
         writeStorage(historyKey(), JSON.stringify(history.slice(0, 60)));
       }
@@ -360,7 +393,7 @@
 
   function weekStats() {
     var history = parseStoredJson(historyKey(), []);
-    var now = new Date();
+    var now = trainingDate();
     var monday = new Date(now.getTime());
     var scheduled = 0;
     var completed = 0;
@@ -396,6 +429,8 @@
     profile = data.profiles[id];
     writeStorage('shopProfile', id);
     selectedExercise = 0;
+    trackingMode = 'ambient';
+    ambientAction = 0;
     view = 'today';
     restTimerEnd = 0;
     restTimerDuration = 0;
@@ -427,7 +462,8 @@
 
   function renderHeader() {
     var plan = planFor(selectedDay);
-    var isToday = selectedDay === days[realNow.getDay()];
+    var currentTrainingDate = trainingDate();
+    var isToday = selectedDay === trainingDayName();
     elements.hello.textContent = 'HELLO, ' + profile.name.toUpperCase();
     elements.planName.textContent = plan.name.toUpperCase();
     setClass(elements.jordanBtn, 'active', profileId === 'jordan');
@@ -435,7 +471,7 @@
     setClass(elements.preview, 'visible', !isToday);
     applyToolbarFocus();
     elements.date.textContent = isToday
-      ? realNow.toLocaleDateString('en-US', {
+      ? currentTrainingDate.toLocaleDateString('en-US', {
           weekday: 'long',
           month: 'long',
           day: 'numeric',
@@ -486,8 +522,74 @@
     return html + '</div>';
   }
 
-  function renderTraining(plan) {
-    var state = loadState();
+  function completionSourceLabel(state) {
+    if (state.completionSource === 'whoop') {
+      return 'Confirmed by WHOOP' + (state.whoopSportName ? ' · ' + state.whoopSportName : '');
+    }
+    if (state.completionSource === 'sets') return 'Completed with set tracking';
+    return 'Marked complete on this screen';
+  }
+
+  function renderAmbientTraining(plan) {
+    var state = loadDisplayState();
+    var summary = sessionSummary(plan);
+    var items = plan.exercises || [];
+    var rows = '';
+    var index;
+    var exercise;
+    var done;
+    var isToday = selectedDay === trainingDayName();
+    var complete = !!state.completed;
+    var primaryLabel = isToday ? 'Complete workout' : 'Return to today';
+    for (index = 0; index < items.length; index += 1) {
+      exercise = items[index];
+      done = Math.min(state.sets[exercise.id] || 0, exercise.sets);
+      rows += '<div class="ambient-move ' + (done >= exercise.sets ? 'complete' : '') + '">' +
+        '<span class="ambient-number">' + pad2(index + 1) + '</span>' +
+        '<span class="ambient-name">' + exercise.name + '</span>' +
+        '<span class="ambient-prescription">' + exercise.sets + ' × ' + exercise.reps + '</span>' +
+        '<span class="ambient-check">' + (done >= exercise.sets ? '✓' : '') + '</span></div>';
+    }
+    elements.content.innerHTML =
+      '<div class="view training-view ambient-view">' +
+      '<div class="view-head"><div><div class="view-label">Today’s plan</div>' +
+      '<div class="view-title">' + plan.name.toUpperCase() + ' DAY</div>' +
+      '<div class="view-subtitle">Everything you need. Nothing to manage.</div></div>' +
+      '<div class="session-summary">' +
+      summaryItem('Movements', summary.moves) + summaryItem('Sets', summary.sets) +
+      summaryItem('Est. time', summary.minutes + ' min') + '</div></div>' +
+      '<div class="ambient-layout"><div class="ambient-plan">' + rows + '</div>' +
+      '<div class="ambient-panel ' + (complete ? 'complete' : '') + '">' +
+      '<div class="ambient-status"><div class="ambient-eyebrow">' + profile.name + ' · ' + (isToday ? 'Live plan' : 'Preview') + '</div>' +
+      '<div class="ambient-state ' + (complete ? 'done' : '') + '">' +
+      (complete ? 'WORKOUT COMPLETE' : 'READY WHEN YOU ARE') + '</div>' +
+      '<div class="ambient-copy">' + (complete
+        ? summary.moves + ' movements · ' + summary.sets + ' sets · finished for this training day.'
+        : (profileId === 'jordan'
+          ? (whoopData && whoopData.workoutAccess === false
+            ? 'WHOOP health data is live. Reconnect once to enable automatic workout completion.'
+            : 'Train normally. An eligible WHOOP strength workout will check this off automatically.')
+          : 'Kelsey’s progress is separate. Mark the workout complete here when finished.')) + '</div>' +
+      (complete ? '<div class="ambient-source">' + completionSourceLabel(state) + '</div>' : '') + '</div>' +
+      '<div class="ambient-actions">' +
+      (!complete ? '<button class="ambient-action primary ' +
+        (focusZone === 'ambient' && ambientAction === 0 ? 'remote-focus' : '') +
+        '" onclick="activateAmbientAction(0)">' + primaryLabel + '<span>✓</span></button>' : '') +
+      '<button class="ambient-action ' +
+        (focusZone === 'ambient' && (complete || ambientAction === 1) ? 'remote-focus' : '') +
+        '" onclick="setTrackingMode(\'sets\')">' + (complete ? 'Review set tracker' : 'Track individual sets') + '<span>→</span></button>' +
+      (!complete && profileId === 'jordan' ? '<div class="ambient-auto">' +
+        (whoopData && whoopData.workoutAccess === false
+          ? 'Manual completion always remains available.'
+          : 'WHOOP checks every 5 minutes. Manual WHOOP entries count too.') + '</div>' : '') +
+      '</div></div></div></div>';
+    elements.controlHint.innerHTML = complete
+      ? '<span class="key">Enter</span> Review sets <span class="key">← →</span> Day <span class="key">↑</span> Menu'
+      : '<span class="key">↑ ↓</span> Action <span class="key">Enter</span> Select <span class="key">← →</span> Day';
+  }
+
+  function renderSetTracking(plan) {
+    var state = loadDisplayState();
     var summary = sessionSummary(plan);
     var doneTotal = completedSets(plan, state);
     var items = plan.exercises || [];
@@ -538,7 +640,7 @@
       '<div class="view training-view">' +
       '<div class="view-head"><div><div class="view-label">Today’s session</div>' +
       '<div class="view-title">' + plan.name.toUpperCase() + ' SESSION</div>' +
-      '<div class="view-subtitle">Move with intent. Finish every clean rep.</div></div>' +
+      '<div class="view-subtitle">Optional set tracker · Back returns to the daily plan.</div></div>' +
       '<div class="session-summary">' +
       summaryItem('Progress', doneTotal + ' / ' + summary.sets) +
       summaryItem('Movements', summary.moves) +
@@ -561,6 +663,11 @@
     elements.controlHint.innerHTML =
       '<span class="key">↑ ↓</span> Movement <span class="key">← →</span> Day ' +
       '<span class="key">Enter</span> Complete / skip <span class="key">Back</span> Undo';
+  }
+
+  function renderTraining(plan) {
+    if (trackingMode === 'sets') renderSetTracking(plan);
+    else renderAmbientTraining(plan);
   }
 
   function readinessInfo() {
@@ -660,6 +767,88 @@
     }
   }
 
+  function setTrackingMode(mode) {
+    trackingMode = mode === 'sets' ? 'sets' : 'ambient';
+    ambientAction = 0;
+    focusZone = trackingMode === 'sets' ? 'workout' : 'ambient';
+    saveUiState();
+    renderContent();
+  }
+
+  function dismissCelebration() {
+    celebrationVisible = false;
+    setClass(elements.celebration, 'visible', false);
+    if (celebrationTimeout && window.clearTimeout) window.clearTimeout(celebrationTimeout);
+    celebrationTimeout = null;
+  }
+
+  function showCelebration(plan, state) {
+    var summary = sessionSummary(plan);
+    elements.celebrationSource.textContent = state.completionSource === 'whoop'
+      ? 'Confirmed automatically by WHOOP'
+      : 'Workout complete';
+    elements.celebrationTitle.textContent = plan.name.toUpperCase() + ' COMPLETE';
+    elements.celebrationMeta.textContent = profile.name + ' · ' + summary.moves +
+      ' movements · ' + summary.sets + ' sets';
+    celebrationVisible = true;
+    setClass(elements.celebration, 'visible', true);
+    playChime();
+    if (celebrationTimeout && window.clearTimeout) window.clearTimeout(celebrationTimeout);
+    if (window.setTimeout) {
+      celebrationTimeout = window.setTimeout(dismissCelebration, CELEBRATION_MS);
+    }
+  }
+
+  function completeWorkout(source, workout) {
+    var plan;
+    var state;
+    var wasComplete;
+    var index;
+    var exercise;
+    if (selectedDay !== trainingDayName()) return false;
+    plan = planFor(selectedDay);
+    if (!plan.exercises || !plan.exercises.length) return false;
+    state = loadState();
+    wasComplete = !!state.completed;
+    for (index = 0; index < plan.exercises.length; index += 1) {
+      exercise = plan.exercises[index];
+      state.sets[exercise.id] = exercise.sets;
+    }
+    state.completed = true;
+    state.completionSource = source || 'manual';
+    state.completedAt = new Date().toISOString();
+    if (workout) {
+      state.whoopWorkoutId = workout.id || workout.uuid || null;
+      state.whoopSportName = workout.sport_name || workout.sport_id || '';
+    }
+    clearRestTimer();
+    lastAction = null;
+    trackingMode = 'ambient';
+    ambientAction = 0;
+    focusZone = 'ambient';
+    unlockAudio();
+    requestWakeLock();
+    saveUiState();
+    saveState(state);
+    if (!wasComplete) showCelebration(plan, state);
+    return !wasComplete;
+  }
+
+  function activateAmbientAction(index) {
+    var state;
+    if (index === 1) {
+      setTrackingMode('sets');
+      return;
+    }
+    if (selectedDay !== trainingDayName()) {
+      useToday();
+      return;
+    }
+    state = loadState();
+    if (state.completed) setTrackingMode('sets');
+    else completeWorkout('manual');
+  }
+
   function completeSet() {
     var plan;
     var exercise;
@@ -669,6 +858,11 @@
     var previousDone;
     var newDone;
     if (view !== 'today') return;
+    if (selectedDay !== trainingDayName()) {
+      useToday();
+      showToast('Returned to today · Preview sessions cannot change progress');
+      return;
+    }
     if (timerActive()) {
       clearRestTimer();
       showToast('Rest skipped · Next set ready');
@@ -696,6 +890,10 @@
       if ((state.sets[plan.exercises[index].id] || 0) < plan.exercises[index].sets) complete = false;
     }
     state.completed = complete;
+    if (complete) {
+      state.completionSource = 'sets';
+      state.completedAt = new Date().toISOString();
+    }
     if (newDone >= exercise.sets && selectedExercise < plan.exercises.length - 1) {
       selectedExercise += 1;
     }
@@ -706,6 +904,7 @@
     }
     saveUiState();
     saveState(state);
+    if (complete) showCelebration(plan, state);
     showToast(complete
       ? 'Workout complete · Excellent work'
       : (newDone >= exercise.sets ? 'Movement complete · Advanced to next' : 'Set ' + newDone + ' complete · Back to undo'));
@@ -730,6 +929,12 @@
     state = loadState();
     state.sets[action.exerciseId] = action.previousDone;
     state.completed = action.previousCompleted;
+    if (!state.completed) {
+      state.completionSource = null;
+      state.completedAt = null;
+      state.whoopWorkoutId = null;
+      state.whoopSportName = null;
+    }
     writeStorage(stateKey(), JSON.stringify(state));
     if (!state.completed) removeTodayFromHistory();
     restTimerEnd = 0;
@@ -778,6 +983,68 @@
       '</b>' + extra + '</div>';
   }
 
+  function strengthWorkout(workout) {
+    var name = String(workout && (workout.sport_name || workout.sport_id) || '').toLowerCase();
+    var strengthNames = [
+      'weightlifting', 'weight lifting', 'strength', 'powerlifting',
+      'functional fitness', 'crossfit', 'bodybuilding', 'barre', 'pilates'
+    ];
+    var index;
+    for (index = 0; index < strengthNames.length; index += 1) {
+      if (name.indexOf(strengthNames[index]) >= 0) return true;
+    }
+    return false;
+  }
+
+  function currentTrainingWindow() {
+    var now = new Date();
+    var start = new Date(now.getTime());
+    var end;
+    start.setHours(TRAINING_DAY_START_HOUR, 0, 0, 0);
+    if (now.getTime() < start.getTime()) start.setDate(start.getDate() - 1);
+    end = new Date(start.getTime());
+    end.setDate(end.getDate() + 1);
+    return { start: start, end: end };
+  }
+
+  function eligibleWhoopWorkout(workout) {
+    var start;
+    var end;
+    var duration;
+    var windowRange = currentTrainingWindow();
+    if (!strengthWorkout(workout)) return false;
+    start = new Date(workout.start || workout.created_at || 0);
+    end = new Date(workout.end || workout.updated_at || 0);
+    if (!isFinite(start.getTime()) || !isFinite(end.getTime())) return false;
+    duration = end.getTime() - start.getTime();
+    if (duration < 10 * 60 * 1000) return false;
+    return end.getTime() >= windowRange.start.getTime() &&
+      end.getTime() < windowRange.end.getTime() &&
+      end.getTime() <= new Date().getTime();
+  }
+
+  function applyWhoopWorkoutCompletion(response) {
+    var workouts;
+    var plan;
+    var state;
+    var matching = null;
+    var index;
+    if (profileId !== 'jordan' || selectedDay !== trainingDayName()) return;
+    plan = planFor(selectedDay);
+    if (!plan.exercises || !plan.exercises.length) return;
+    state = loadState();
+    if (state.completed) return;
+    workouts = response && response.workouts ? response.workouts : [];
+    for (index = 0; index < workouts.length; index += 1) {
+      if (eligibleWhoopWorkout(workouts[index])) {
+        if (!matching || new Date(workouts[index].end).getTime() > new Date(matching.end).getTime()) {
+          matching = workouts[index];
+        }
+      }
+    }
+    if (matching) completeWorkout('whoop', matching);
+  }
+
   function loadWhoop() {
     if (profileId === 'kelsey') {
       elements.whoop.className = 'status';
@@ -813,6 +1080,7 @@
         metric('Sleep', sleep.sleep_performance_percentage != null ? sleep.sleep_performance_percentage + '%' : '—', trends.sleep);
       elements.whoopLive.textContent = 'WHOOP LIVE';
       renderContent();
+      applyWhoopWorkoutCompletion(response);
     });
   }
 
@@ -841,7 +1109,9 @@
     var plan;
     if (view !== 'today') return;
     plan = planFor(selectedDay);
-    focusZone = plan.exercises && plan.exercises.length ? 'workout' : 'day';
+    focusZone = plan.exercises && plan.exercises.length
+      ? (trackingMode === 'sets' ? 'workout' : 'ambient')
+      : 'day';
     saveUiState();
     renderContent();
   }
@@ -854,7 +1124,9 @@
   function setDay(day) {
     selectedDay = day;
     selectedExercise = 0;
-    focusZone = planFor(day).exercises && planFor(day).exercises.length ? 'workout' : 'day';
+    trackingMode = 'ambient';
+    ambientAction = 0;
+    focusZone = planFor(day).exercises && planFor(day).exercises.length ? 'ambient' : 'day';
     updateDayUrl(day);
     saveUiState();
     renderContent();
@@ -866,9 +1138,11 @@
   }
 
   function useToday() {
-    selectedDay = days[realNow.getDay()];
+    selectedDay = trainingDayName();
     selectedExercise = 0;
-    focusZone = planFor(selectedDay).exercises && planFor(selectedDay).exercises.length ? 'workout' : 'day';
+    trackingMode = 'ambient';
+    ambientAction = 0;
+    focusZone = planFor(selectedDay).exercises && planFor(selectedDay).exercises.length ? 'ambient' : 'day';
     updateDayUrl(null);
     saveUiState();
     renderContent();
@@ -877,6 +1151,31 @@
   function renderAll() {
     updateClock();
     renderContent();
+  }
+
+  function checkTrainingDayReset() {
+    var key = todayKey();
+    if (!activeTrainingDateKey) {
+      activeTrainingDateKey = key;
+      return;
+    }
+    if (key === activeTrainingDateKey) return;
+    activeTrainingDateKey = key;
+    selectedDay = trainingDayName();
+    selectedExercise = 0;
+    trackingMode = 'ambient';
+    ambientAction = 0;
+    view = 'today';
+    focusZone = planFor(selectedDay).exercises && planFor(selectedDay).exercises.length ? 'ambient' : 'day';
+    restTimerEnd = 0;
+    restTimerDuration = 0;
+    restTimerExerciseId = null;
+    lastAction = null;
+    dismissCelebration();
+    updateDayUrl(null);
+    saveUiState();
+    renderAll();
+    loadWhoop();
   }
 
   function init() {
@@ -890,19 +1189,25 @@
       data = response;
       if (!data.profiles || !data.profiles[profileId]) profileId = 'jordan';
       profile = data.profiles[profileId];
+      activeTrainingDateKey = todayKey();
       restoreUiState();
       restoredPlan = planFor(selectedDay);
       if (view === 'progress') {
         focusZone = 'toolbar';
         toolbarIndex = 3;
-      } else if ((!restoredPlan.exercises || !restoredPlan.exercises.length) && focusZone === 'workout') {
+      } else if ((!restoredPlan.exercises || !restoredPlan.exercises.length) &&
+          (focusZone === 'workout' || focusZone === 'ambient')) {
         focusZone = 'day';
+      } else if (restoredPlan.exercises && restoredPlan.exercises.length &&
+          focusZone !== 'toolbar') {
+        focusZone = trackingMode === 'sets' ? 'workout' : 'ambient';
       }
       renderAll();
       updateRestTimer();
       loadWhoop();
-      window.setInterval(loadWhoop, 15 * 60 * 1000);
+      window.setInterval(loadWhoop, WHOOP_POLL_MS);
       window.setInterval(updateClock, 30 * 1000);
+      window.setInterval(checkTrainingDayReset, 30 * 1000);
       window.setInterval(updateRestTimer, 1000);
     });
   }
@@ -914,6 +1219,10 @@
   window.useToday = useToday;
   window.renderContent = renderContent;
   window.completeSet = completeSet;
+  window.completeWorkout = completeWorkout;
+  window.activateAmbientAction = activateAmbientAction;
+  window.setTrackingMode = setTrackingMode;
+  window.dismissCelebration = dismissCelebration;
   window.undoLastSet = undoLastSet;
   window.selectExercise = selectExercise;
 
@@ -926,7 +1235,17 @@
     document.addEventListener('keydown', function (event) {
       var items;
       if (isBackKey(event)) {
+        if (celebrationVisible) {
+          dismissCelebration();
+          event.preventDefault();
+          return;
+        }
         if (lastAction && undoLastSet()) {
+          event.preventDefault();
+          return;
+        }
+        if (trackingMode === 'sets' && focusZone === 'workout') {
+          setTrackingMode('ambient');
           event.preventDefault();
           return;
         }
@@ -955,6 +1274,12 @@
           return;
         }
         if (view !== 'today' || focusZone === 'day') return;
+        if (focusZone === 'ambient') {
+          if (!loadState().completed) ambientAction = ambientAction === 0 ? 1 : 0;
+          saveUiState();
+          renderContent();
+          return;
+        }
         items = planFor(selectedDay).exercises || [];
         selectedExercise = Math.min(selectedExercise + 1, Math.max(items.length - 1, 0));
         saveUiState();
@@ -964,7 +1289,7 @@
       if (event.key === 'ArrowUp' || event.keyCode === 38) {
         event.preventDefault();
         if (focusZone === 'toolbar') return;
-        if (view !== 'today' || focusZone === 'day') {
+        if (view !== 'today' || focusZone === 'day' || focusZone === 'ambient') {
           focusZone = 'toolbar';
           toolbarIndex = view === 'progress' ? 3 : 2;
           saveUiState();
@@ -984,8 +1309,13 @@
       }
       if (event.key === 'Enter' || event.keyCode === 13) {
         event.preventDefault();
+        if (celebrationVisible) {
+          dismissCelebration();
+          return;
+        }
         if (focusZone === 'toolbar') activateToolbar();
         else if (focusZone === 'workout') completeSet();
+        else if (focusZone === 'ambient') activateAmbientAction(ambientAction);
       }
     });
   }

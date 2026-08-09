@@ -72,6 +72,9 @@ test('loads current WHOOP values and seven-day baselines', async () => {
     if (url.includes('/cycle')) {
       return response({ records: [{ score: { strain: 12 } }, { score: { strain: 10 } }] });
     }
+    if (url.includes('/workout')) {
+      return response({ records: [{ id: 'workout-1', sport_name: 'Weightlifting' }] });
+    }
     return response({
       records: [
         { nap: true, score: { sleep_performance_percentage: 20 } },
@@ -90,6 +93,23 @@ test('loads current WHOOP values and seven-day baselines', async () => {
   assert.equal(data.trends.restingHr.baseline, 59);
   assert.equal(data.trends.strain.baseline, 10);
   assert.equal(data.trends.sleep.baseline, 80);
+  assert.equal(data.workoutAccess, true);
+  assert.equal(data.workouts[0].sport_name, 'Weightlifting');
+});
+
+test('keeps health metrics available when workout scope is unavailable', async () => {
+  const fetchImpl = async (url) => {
+    if (url.includes('/workout')) return response({ message: 'Forbidden' }, 403);
+    if (url.includes('/recovery')) return response({ records: [] });
+    if (url.includes('/cycle')) return response({ records: [] });
+    return response({ records: [] });
+  };
+
+  const data = await loadWhoopData('shared-access', fetchImpl);
+
+  assert.equal(data.workoutAccess, false);
+  assert.deepEqual(data.workouts, []);
+  assert.match(data.workoutError, /Forbidden/);
 });
 
 test('surfaces WHOOP OAuth errors with their status and details', async () => {
