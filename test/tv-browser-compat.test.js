@@ -84,13 +84,25 @@ test('every configured training day stays within the five-row TV density budget'
   }
 });
 
+test('the shared training week starts with Push on Sunday', async () => {
+  const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
+
+  for (const profile of Object.values(workouts.profiles)) {
+    assert.equal(profile.week.Sunday.name, 'Push');
+    assert.equal(profile.week.Sunday.exercises.length, 5);
+    assert.equal(profile.week.Tuesday.name, 'Pull');
+    assert.equal(profile.week.Thursday.name, 'Legs');
+    assert.equal(profile.week.Monday.name, 'Rest');
+  }
+});
+
 test('TV client renders training, rest, progress, WHOOP, and set completion flows', async () => {
   const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
   const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
   const elements = createElementMap();
   const requests = [];
   const storage = new Map();
-  const TestDate = mutableDate('2026-08-10T12:00:00-07:00');
+  const TestDate = mutableDate('2026-08-09T12:00:00-07:00');
 
   class FakeXmlHttpRequest {
     open(_method, url) {
@@ -176,11 +188,11 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
   assert.match(elements.content.innerHTML, /READY WHEN YOU ARE/);
   assert.doesNotMatch(elements.content.innerHTML, /WORKOUT COMPLETE/);
 
-  context.setDay('Sunday');
+  context.setDay('Monday');
   assert.match(elements.content.innerHTML, /RECOVERY DAY/);
   assert.match(elements.content.innerHTML, /class="week-strip"/);
-  assert.match(elements.content.innerHTML, /Monday/);
-  assert.match(elements.content.innerHTML, /Push Session/);
+  assert.match(elements.content.innerHTML, /Tuesday/);
+  assert.match(elements.content.innerHTML, /Pull Session/);
 
   context.setView('progress');
   assert.match(elements.content.innerHTML, /TRAINING OVERVIEW/);
@@ -197,7 +209,7 @@ test('five-way remote navigation, timer persistence, auto-advance, and undo work
   const elements = createElementMap();
   const storage = new Map();
   const intervals = [];
-  const TestDate = mutableDate('2026-08-10T12:00:00-07:00');
+  const TestDate = mutableDate('2026-08-09T12:00:00-07:00');
   let keydown;
 
   class FakeXmlHttpRequest {
@@ -224,7 +236,7 @@ test('five-way remote navigation, timer persistence, auto-advance, and undo work
       }
     },
     history: { replaceState() {} },
-    location: { search: '?day=Monday', pathname: '/' },
+    location: { search: '?day=Sunday', pathname: '/' },
     localStorage: {
       getItem: (key) => storage.get(key) || null,
       setItem: (key, value) => storage.set(key, value)
@@ -285,7 +297,7 @@ test('an eligible WHOOP strength workout automatically completes only Jordan’s
   const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
   const elements = createElementMap();
   const storage = new Map();
-  const TestDate = mutableDate('2026-08-10T12:00:00-07:00');
+  const TestDate = mutableDate('2026-08-09T12:00:00-07:00');
 
   class FakeXmlHttpRequest {
     open(_method, url) { this.url = url; }
@@ -298,8 +310,8 @@ test('an eligible WHOOP strength workout automatically completes only Jordan’s
             workouts: [{
               id: 'whoop-workout-1',
               sport_name: 'Weightlifting',
-              start: '2026-08-10T10:15:00-07:00',
-              end: '2026-08-10T11:00:00-07:00'
+              start: '2026-08-09T10:15:00-07:00',
+              end: '2026-08-09T11:00:00-07:00'
             }],
             workoutAccess: true,
             trends: {}
@@ -348,7 +360,7 @@ test('the unattended screen rolls to a fresh training day at 7 AM', async () => 
   const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
   const elements = createElementMap();
   const intervals = [];
-  const TestDate = mutableDate('2026-08-10T06:59:00-07:00');
+  const TestDate = mutableDate('2026-08-09T06:59:00-07:00');
 
   class FakeXmlHttpRequest {
     open(_method, url) { this.url = url; }
@@ -381,7 +393,7 @@ test('the unattended screen rolls to a fresh training day at 7 AM', async () => 
   vm.runInNewContext(source, context);
 
   assert.match(elements.content.innerHTML, /RECOVERY DAY/);
-  TestDate.set('2026-08-10T07:01:00-07:00');
+  TestDate.set('2026-08-09T07:01:00-07:00');
   for (const callback of intervals) callback();
   assert.match(elements.content.innerHTML, /PUSH DAY/);
   assert.match(elements.content.innerHTML, /READY WHEN YOU ARE/);
