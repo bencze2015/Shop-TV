@@ -8,26 +8,20 @@
         "Tuesday":{"name":"Pull","exercises":[
           {"id":"pullups","name":"Pull-Ups","sets":3,"reps":"6–10","restSeconds":120},
           {"id":"db-row","name":"One-Arm Dumbbell Row","sets":3,"reps":"8–12 / side","restSeconds":90},
-          {"id":"db-rear-delt","name":"Rear-Delt Dumbbell Fly","sets":3,"reps":"12–15","restSeconds":60},
-          {"id":"band-face-pull","name":"Band Face Pull","sets":3,"reps":"12–20","restSeconds":60},
           {"id":"db-curl","name":"Dumbbell Curl","sets":3,"reps":"8–12","restSeconds":60}
         ]},
         "Wednesday":{"name":"Rest","exercises":[]},
         "Thursday":{"name":"Legs","exercises":[
           {"id":"db-goblet-squat","name":"Elevated Goblet Squat","sets":4,"reps":"8–12","restSeconds":120},
           {"id":"db-rdl","name":"Dumbbell Romanian Deadlift","sets":3,"reps":"8–12","restSeconds":120},
-          {"id":"db-bulgarian","name":"Bulgarian Split Squat","sets":3,"reps":"8–12 / leg","restSeconds":90},
-          {"id":"db-calf","name":"Elevated Dumbbell Calf Raise","sets":3,"reps":"12–20","restSeconds":60},
-          {"id":"band-leg-curl","name":"Band Leg Curl","sets":3,"reps":"12–15","restSeconds":60}
+          {"id":"db-bulgarian","name":"Bulgarian Split Squat","sets":3,"reps":"8–12 / leg","restSeconds":90}
         ]},
         "Friday":{"name":"Rest","exercises":[]},
         "Saturday":{"name":"Rest","exercises":[]},
         "Sunday": {"name":"Push","exercises":[
           {"id":"db-bench-press","name":"Dumbbell Bench Press","sets":3,"reps":"8–12","restSeconds":90},
           {"id":"db-incline-press","name":"Incline Dumbbell Press","sets":3,"reps":"8–12","restSeconds":90},
-          {"id":"db-shoulder-press","name":"Dumbbell Shoulder Press","sets":3,"reps":"8–12","restSeconds":90},
-          {"id":"db-lateral-raise","name":"Dumbbell Lateral Raise","sets":3,"reps":"12–15","restSeconds":60},
-          {"id":"band-triceps","name":"Band Triceps Extension","sets":3,"reps":"10–15","restSeconds":60}
+          {"id":"db-lateral-raise","name":"Dumbbell Lateral Raise","sets":3,"reps":"12–15","restSeconds":60}
         ]}
       }
     },
