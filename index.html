@@ -1,39 +1,213 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shop TV Workout</title>
-<style>*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#090a0b;color:#f7f7f5;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}body{min-height:100vh;padding:48px;padding:clamp(34px,5vw,78px)}button{font:inherit}.screen{width:100%;margin:0}.top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px}.eyebrow{font-size:15px;font-size:clamp(12px,.85vw,15px);font-weight:750;letter-spacing:.19em;color:#777;text-transform:uppercase;margin-bottom:10px}.hello{font-size:48px;font-size:clamp(30px,3vw,48px);line-height:1;font-weight:760;letter-spacing:.075em}.date{font-size:28px;font-size:clamp(18px,1.8vw,30px);font-weight:500;color:#8b8d90;margin-top:10px}.rightTop{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}.live{display:flex;align-items:center;gap:9px;color:#8b8d90;font-size:13px;letter-spacing:.08em;text-transform:uppercase}.dot{width:7px;height:7px;border-radius:50%;background:#67d391}.nav,.profiles{display:flex;gap:6px}.nav button,.profiles button{border:1px solid #282b2e;background:#111315;color:#8c9094;border-radius:9px;padding:8px 12px;font-size:12px;font-weight:750;letter-spacing:.08em;cursor:pointer}.nav button.active,.profiles button.active{background:#f3f3f0;color:#111}.whoop{display:flex;flex-wrap:wrap;display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:38px 0 0}.metric,.panel{background:#101214;border:1px solid #24272a;border-radius:15px;padding:20px 22px}.metric{min-height:112px;flex:1 1 180px;margin:0 6px 12px}.metric span,.panel-label,.workout-label{display:block;color:#777b7f;font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:.12em}.metric b{display:block;font-size:40px;font-size:clamp(28px,2.5vw,42px);line-height:1;margin-top:13px;letter-spacing:-.035em}.trend{margin-top:9px;color:#74787c;font-size:12px;font-weight:650}.trend.up{color:#70c993}.trend.down{color:#d68a8a}.status{color:#8b8d90;margin:32px 0}.connect{background:#f4f4f2;color:#111;border:0;border-radius:10px;padding:12px 18px;font-size:15px;font-weight:750;cursor:pointer;margin-top:10px}.divider{height:1px;background:#292c2f;background:linear-gradient(90deg,#292c2f,transparent);margin:44px 0 0}.workout-wrap{padding-top:38px}.title,.rest{font-size:96px;font-size:clamp(62px,8.5vw,128px);line-height:.92;font-weight:800;letter-spacing:-.055em;margin:12px 0 0}.rest-sub{color:#6f7275;font-size:20px;font-size:clamp(16px,1.25vw,21px);margin-top:20px}.idle-grid{display:flex;flex-wrap:wrap;display:grid;grid-template-columns:1.3fr .7fr;gap:14px;margin-top:34px}.idle-grid .panel{flex:1 1 360px;margin:0 7px 14px}.panel-value{font-size:36px;font-size:clamp(24px,2.5vw,38px);font-weight:720;margin-top:8px}.panel-sub{color:#707478;margin-top:5px;font-size:14px}.exercise-list{display:block;display:grid;gap:10px;margin-top:28px}.exercise{display:flex;display:grid;grid-template-columns:36px 1fr auto;align-items:center;gap:16px;background:#101214;border:1px solid #24272a;border-radius:14px;padding:18px 20px;margin-bottom:10px;cursor:pointer}.exercise.selected{border-color:#666b70;box-shadow:0 0 0 1px #3b3f43}.exercise-num{color:#5e6266;font-size:14px;font-weight:750;margin-right:16px}.exercise-name{font-size:32px;font-size:clamp(22px,2.1vw,34px);font-weight:650}.exercise-meta{color:#777b7f;margin-top:5px;font-size:14px}.set-count{font-size:30px;font-size:clamp(22px,2vw,32px);font-weight:750;margin-left:auto}.set-count.done{color:#72cf95}.controls{display:flex;align-items:center;gap:12px;margin-top:20px;color:#6f7377;font-size:13px}.kbd{border:1px solid #363a3e;border-radius:6px;padding:4px 7px;color:#a7aaad}.progress-grid{display:flex;flex-wrap:wrap;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:30px}.progress-grid .panel{flex:1 1 260px;margin:0 6px 12px}.progress-big{font-size:60px;font-size:clamp(38px,4.2vw,66px);font-weight:780;letter-spacing:-.04em;margin-top:12px}.bar{height:7px;background:#202326;border-radius:8px;overflow:hidden;margin-top:14px}.bar i{display:block;height:100%;background:#e9e9e6}.history{margin-top:24px;display:block;display:grid;gap:9px}.history-row{display:flex;justify-content:space-between;background:#101214;border:1px solid #232629;border-radius:12px;padding:14px 17px;margin-bottom:9px;color:#a8abad}.dev{position:fixed;right:18px;bottom:18px;display:flex;gap:7px;opacity:.12}.dev:hover{opacity:1}.dev button{background:#151719;color:#aaa;border:1px solid #303336;border-radius:8px;padding:9px 12px}.preview{position:fixed;right:22px;top:18px;color:#777;font-size:12px;font-weight:700;letter-spacing:.12em}@supports(display:grid){.metric,.idle-grid .panel,.progress-grid .panel{margin:0}}@media(max-width:900px){.whoop{grid-template-columns:repeat(2,1fr)}.whoop .metric:last-child{grid-column:span 2}.top{display:block}.rightTop{margin-top:18px;justify-content:flex-start}.idle-grid,.progress-grid{grid-template-columns:1fr}}</style></head>
-<body><main class="screen"><div class="top"><div><div class="eyebrow" id="programName">Shop Training</div><div class="hello" id="hello">HELLO</div><div class="date" id="date"></div></div><div class="rightTop"><div class="profiles"><button id="jordanBtn" onclick="setProfile('jordan')">JORDAN</button><button id="kelseyBtn" onclick="setProfile('kelsey')">KELSEY</button></div><div class="live"><i class="dot"></i><span id="whoopLive">WHOOP LIVE</span></div><div class="nav"><button id="todayTab" class="active" onclick="setView('today')">TODAY</button><button id="progressTab" onclick="setView('progress')">PROGRESS</button></div></div></div><div id="whoop" class="status">Loading WHOOP…</div><div class="divider"></div><div class="workout-wrap" id="content"></div></main><div class="preview" id="preview"></div><div class="dev"><button onclick="changeDay(-1)">◀ Day</button><button onclick="useToday()">Today</button><button onclick="changeDay(1)">Day ▶</button></div>
-<script src="/app-legacy.js"></script>
-<script type="text/plain" id="modern-client">
-const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],realNow=new Date();
-let selectedDay=new URLSearchParams(location.search).get('day');
-if(!days.includes(selectedDay)) selectedDay=days[realNow.getDay()];
-let data={profiles:{}},profileId=localStorage.getItem('shopProfile')||'jordan',profile={name:'Jordan',week:{}},whoopData=null,view='today',selectedExercise=0;
-const WHOOP_AUTH='/api/whoop-connect';
-const todayKey=()=>realNow.toISOString().slice(0,10);
-const stateKey=()=>`shopWorkout:${profileId}:${todayKey()}`;
-const historyKey=()=>`shopHistory:${profileId}`;
-function loadState(){try{return JSON.parse(localStorage.getItem(stateKey()))||{sets:{},completed:false}}catch{return {sets:{},completed:false}}}
-function saveState(s){localStorage.setItem(stateKey(),JSON.stringify(s));if(s.completed){let h=[];try{h=JSON.parse(localStorage.getItem(historyKey()))||[]}catch{};if(!h.some(x=>x.date===todayKey())){const p=planFor(days[realNow.getDay()]);h.unshift({date:todayKey(),name:p.name});localStorage.setItem(historyKey(),JSON.stringify(h.slice(0,60)))}}renderContent()}
-function planFor(day){return profile.week?.[day]||{name:'Rest',exercises:[]}}
-function nextWorkout(){const start=days.indexOf(selectedDay);for(let n=1;n<=7;n++){const d=days[(start+n)%7],p=planFor(d);if(p.exercises?.length)return{day:d,name:p.name}}return null}
-function weekStats(){let h=[];try{h=JSON.parse(localStorage.getItem(historyKey()))||[]}catch{};const now=new Date(),mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);let scheduled=0,completed=0;for(let i=0;i<7;i++){const d=new Date(mon);d.setDate(mon.getDate()+i);if(planFor(days[d.getDay()]).exercises?.length){scheduled++;if(h.some(x=>x.date===d.toISOString().slice(0,10)))completed++}}return{scheduled,completed}}
-function setProfile(id){if(!data.profiles[id])return;profileId=id;profile=data.profiles[id];localStorage.setItem('shopProfile',id);selectedExercise=0;whoopData=null;renderAll();loadWhoop()}
-function renderHeader(){hello.textContent='HELLO, '+profile.name.toUpperCase();programName.textContent=(data.programName||'Shop Training')+' · '+(planFor(selectedDay).name||'Rest');jordanBtn.classList.toggle('active',profileId==='jordan');kelseyBtn.classList.toggle('active',profileId==='kelsey');const isToday=selectedDay===days[realNow.getDay()];date.textContent=isToday?realNow.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}):selectedDay+' — PREVIEW';preview.textContent=isToday?'':'TEST MODE'}
-function renderContent(){renderHeader();todayTab.classList.toggle('active',view==='today');progressTab.classList.toggle('active',view==='progress');if(view==='progress')return renderProgress();const p=planFor(selectedDay),items=p.exercises||[];if(!items.length){const n=nextWorkout(),w=weekStats(),pct=w.scheduled?Math.round(w.completed/w.scheduled*100):100;content.innerHTML=`<div class="workout-label">Today’s Plan</div><div class="rest">REST DAY</div><div class="rest-sub">Recover. Reset. Come back ready.</div><div class="idle-grid"><div class="panel"><div class="panel-label">Next Workout</div><div class="panel-value">${n?n.day+' · '+n.name:'None'}</div></div><div class="panel"><div class="panel-label">This Week</div><div class="panel-value">${w.completed}/${w.scheduled}</div><div class="bar"><i style="width:${pct}%"></i></div></div></div>`;return}const s=loadState();content.innerHTML=`<div class="workout-label">${p.name}</div><div class="title">TRAINING DAY</div><div class="exercise-list">${items.map((x,i)=>{const done=Math.min(s.sets[x.id]||0,x.sets);return`<div class="exercise ${i===selectedExercise?'selected':''}" onclick="selectedExercise=${i};renderContent()"><span class="exercise-num">${String(i+1).padStart(2,'0')}</span><div><div class="exercise-name">${x.name}</div><div class="exercise-meta">${x.sets} × ${x.reps} · ${x.restSeconds}s rest</div></div><div class="set-count ${done>=x.sets?'done':''}">${done}/${x.sets}</div></div>`}).join('')}</div><div class="controls"><span class="kbd">↑ ↓</span> Select <span class="kbd">ENTER</span> Complete set</div>`}
-function completeSet(){if(view!=='today')return;const p=planFor(selectedDay),x=p.exercises?.[selectedExercise];if(!x)return;const s=loadState();s.sets[x.id]=Math.min((s.sets[x.id]||0)+1,x.sets);s.completed=p.exercises.every(e=>(s.sets[e.id]||0)>=e.sets);saveState(s)}
-function renderProgress(){const w=weekStats(),pct=w.scheduled?Math.round(w.completed/w.scheduled*100):100;let h=[];try{h=JSON.parse(localStorage.getItem(historyKey()))||[]}catch{};const t=whoopData?.trends||{};content.innerHTML=`<div class="workout-label">${profile.name} · Training Overview</div><div class="title">PROGRESS</div><div class="progress-grid"><div class="panel"><div class="panel-label">Weekly Completion</div><div class="progress-big">${pct}%</div><div class="bar"><i style="width:${pct}%"></i></div></div><div class="panel"><div class="panel-label">HRV vs Baseline</div><div class="progress-big">${trendPct(t.hrv)}</div></div><div class="panel"><div class="panel-label">Recovery vs Baseline</div><div class="progress-big">${trendPct(t.recovery)}</div></div></div><div class="history">${h.length?h.slice(0,6).map(x=>`<div class="history-row"><strong>${x.name}</strong><span>${x.date}</span></div>`).join(''):'<div class="panel-sub">Complete a workout to build history.</div>'}</div>`}
-function trendPct(x){if(!Number.isFinite(x?.current)||!Number.isFinite(x?.baseline)||!x.baseline)return'—';const p=(x.current-x.baseline)/x.baseline*100;return`${p>=0?'+':''}${Math.round(p)}%`}
-function metric(l,v,t,type){let extra='';if(t&&Number.isFinite(t.current)&&Number.isFinite(t.baseline)){const d=t.current-t.baseline,good=type==='rhr'?d<=0:d>=0;extra=`<div class="trend ${good?'up':'down'}">${d>=0?'↑':'↓'} ${Math.abs(Math.round(d))} vs avg</div>`}return`<div class="metric"><span>${l}</span><b>${v??'—'}</b>${extra}</div>`}
-async function loadWhoop(){if(profileId==='kelsey'){whoop.className='status';whoop.innerHTML='Kelsey WHOOP is not connected yet. Her workout tracking works independently.';whoopLive.textContent='WHOOP NOT CONNECTED';return}try{const r=await fetch('/api/whoop-data'),d=await r.json();if(!r.ok){const error=new Error(d.error||'WHOOP request failed');error.status=r.status;throw error}whoopData=d;const rec=d.recovery?.score||{},cy=d.cycle?.score||{},sl=d.sleep?.score||{},t=d.trends||{};whoop.className='whoop';whoop.innerHTML=metric('Recovery',rec.recovery_score!=null?rec.recovery_score+'%':'—',t.recovery)+metric('HRV',rec.hrv_rmssd_milli!=null?Math.round(rec.hrv_rmssd_milli)+' ms':'—',t.hrv)+metric('Resting HR',rec.resting_heart_rate!=null?rec.resting_heart_rate+' bpm':'—',t.restingHr,'rhr')+metric('Day Strain',cy.strain!=null?cy.strain.toFixed(1):'—',t.strain)+metric('Sleep',sl.sleep_performance_percentage!=null?sl.sleep_performance_percentage+'%':'—',t.sleep);whoopLive.textContent='WHOOP LIVE';if(view==='progress')renderContent()}catch(e){whoop.className='status';whoopLive.textContent='WHOOP NOT CONNECTED';whoop.innerHTML=e.status===401?`WHOOP needs to be connected from a phone or computer.<br><button class="connect" onclick="location.href=WHOOP_AUTH">Connect WHOOP</button>`:'WHOOP data unavailable: '+e.message}}
-function setView(v){view=v;renderContent()}
-function setDay(d){selectedDay=d;selectedExercise=0;const u=new URL(location.href);u.searchParams.set('day',d);history.replaceState({},'',u);renderContent()}
-function changeDay(n){let i=days.indexOf(selectedDay);setDay(days[(i+n+7)%7])}
-function useToday(){selectedDay=days[realNow.getDay()];const u=new URL(location.href);u.searchParams.delete('day');history.replaceState({},'',u);renderContent()}
-function renderAll(){renderContent()}
-document.addEventListener('keydown',e=>{if(view!=='today')return;const items=planFor(selectedDay).exercises||[];if(e.key==='ArrowDown'){e.preventDefault();selectedExercise=Math.min(selectedExercise+1,Math.max(items.length-1,0));renderContent()}if(e.key==='ArrowUp'){e.preventDefault();selectedExercise=Math.max(selectedExercise-1,0);renderContent()}if(e.key==='Enter'){e.preventDefault();completeSet()}});
-async function init(){try{data=await fetch('/workouts.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Could not load workouts.json');return r.json()});if(!data.profiles?.[profileId])profileId='jordan';profile=data.profiles[profileId];renderAll();loadWhoop();setInterval(loadWhoop,15*60*1000)}catch(e){whoop.textContent='Startup error';content.textContent='Workout program unavailable: '+e.message;console.error(e)}}
-init();
-</script>
-<script>
-(function(){try{new Function('var value={nested:{ok:true}};return value?.nested?.ok??false;')();var source=document.getElementById('modern-client'),script=document.createElement('script');script.text=source.text||source.textContent;document.body.appendChild(script)}catch(error){}})();
-</script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080a0c">
+  <title>Shop TV Training</title>
+  <style>
+    *{box-sizing:border-box}
+    html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#080a0c;color:#f5f7f4;font-family:Arial,"Helvetica Neue",sans-serif}
+    body{height:100vh;min-height:560px;padding:28px 38px;background:#080a0c;background:radial-gradient(circle at 82% -10%,#17201c 0,#0d1111 30%,#080a0c 62%)}
+    button{font:inherit}
+    .screen{width:100%;height:100%;min-height:0;display:flex;flex-direction:column}
+    .topbar{flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between}
+    .identity{min-width:330px}
+    .kicker,.view-label,.metric-label,.card-label,.queue-label{color:#7c8581;font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
+    .kicker strong{color:#a9ffcf}
+    .welcome{margin-top:7px;font-size:34px;font-weight:760;letter-spacing:.045em;line-height:1}
+    .dayline{margin-top:7px;color:#a5ada9;font-size:15px;font-weight:600}
+    .toolbar{display:flex;align-items:center;justify-content:flex-end;padding-top:2px}
+    .toolbar-group{display:flex;margin-left:10px;padding:3px;border:1px solid #222a27;border-radius:10px;background:#0b0f0e}
+    .toolbar button{border:0;border-radius:7px;background:transparent;color:#76807b;padding:7px 10px;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+    .toolbar button.active{background:#e8eee9;color:#101411}
+    .live{display:flex;align-items:center;color:#89938e;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+    .live-dot{width:6px;height:6px;margin-right:7px;border-radius:50%;background:#73e4a4;box-shadow:0 0 12px rgba(115,228,164,.45)}
+    .clock{margin-left:14px;color:#d8ddda;font-size:13px;font-weight:700;white-space:nowrap}
+    .preview-chip{display:none;margin-left:10px;border:1px solid #39423e;border-radius:999px;padding:5px 8px;color:#aeb7b2;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+    .preview-chip.visible{display:block}
+
+    .whoop{flex:0 0 82px;height:82px;display:flex;margin-top:18px;border-top:1px solid #202723;border-bottom:1px solid #202723;background:#0b0f0e}
+    .metric{position:relative;min-width:0;flex:1;padding:13px 20px;border-right:1px solid #202723}
+    .metric:last-child{border-right:0}
+    .metric b{display:block;margin-top:6px;color:#f5f7f4;font-size:25px;font-weight:760;letter-spacing:-.035em;line-height:1}
+    .metric.recovery b{color:#a9ffcf}
+    .trend{position:absolute;right:18px;bottom:13px;color:#79827e;font-size:9px;font-weight:750}
+    .trend.up{color:#76d99b}
+    .trend.down{color:#e17d84}
+    .status{flex:0 0 82px;height:82px;margin-top:18px;display:flex;align-items:center;border-top:1px solid #202723;border-bottom:1px solid #202723;color:#8b9490;font-size:13px}
+    .connect{margin-left:14px;border:1px solid #35413b;border-radius:8px;background:#111714;color:#dfe7e2;padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer}
+
+    .workspace{flex:1;min-height:0;margin-top:18px;overflow:hidden}
+    .view{height:100%;min-height:0;display:flex;flex-direction:column}
+    .view-head{flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:13px}
+    .view-title{margin-top:5px;font-size:38px;font-size:clamp(32px,3vw,48px);font-weight:790;letter-spacing:-.045em;line-height:.95}
+    .view-subtitle{margin-top:7px;color:#7f8884;font-size:12px}
+    .session-summary{display:flex;align-items:center}
+    .summary-item{margin-left:24px;text-align:right}
+    .summary-item span{display:block;color:#717a76;font-size:9px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
+    .summary-item b{display:block;margin-top:5px;color:#dfe4e1;font-size:17px;font-weight:740}
+
+    .training-layout{flex:1;min-height:0;display:flex}
+    .focus-card{position:relative;width:38%;height:100%;min-height:0;margin-right:14px;overflow:hidden;border:1px solid #29332e;border-radius:18px;background:#111614;background:linear-gradient(145deg,#18201c 0,#101513 54%,#0c100f 100%);padding:25px 27px;display:flex;flex-direction:column}
+    .focus-card:after{content:"";position:absolute;width:230px;height:230px;right:-100px;top:-110px;border:1px solid rgba(169,255,207,.12);border-radius:50%;box-shadow:0 0 70px rgba(85,184,127,.08)}
+    .focus-top{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center}
+    .focus-index{color:#a9ffcf;font-size:11px;font-weight:850;letter-spacing:.14em}
+    .focus-state{border:1px solid #33423a;border-radius:999px;padding:5px 8px;color:#8d9c94;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+    .focus-name{position:relative;z-index:1;max-width:95%;margin-top:20px;font-size:31px;font-size:clamp(25px,2.35vw,38px);font-weight:770;letter-spacing:-.035em;line-height:1.02}
+    .focus-prescription{position:relative;z-index:1;margin-top:11px;color:#929c97;font-size:14px}
+    .set-section{position:relative;z-index:1;margin-top:auto}
+    .set-readout{display:flex;align-items:flex-end;justify-content:space-between}
+    .set-readout strong{font-size:46px;font-size:clamp(36px,3.5vw,56px);letter-spacing:-.06em;line-height:.85}
+    .set-readout span{color:#77817c;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+    .set-track{display:flex;margin-top:18px}
+    .set-segment{height:7px;flex:1;margin-right:7px;border-radius:8px;background:#2b3430}
+    .set-segment.done{background:#a9ffcf;box-shadow:0 0 14px rgba(169,255,207,.18)}
+    .focus-hint{margin-top:15px;color:#737c78;font-size:10px;font-weight:750;letter-spacing:.06em}
+
+    .session-list{width:62%;height:100%;min-height:0;display:flex;flex-direction:column}
+    .exercise{position:relative;flex:1;min-height:0;display:flex;align-items:center;margin-bottom:7px;border:1px solid #1f2723;border-radius:12px;background:#0c100f;padding:7px 14px;cursor:pointer;overflow:hidden}
+    .exercise:last-child{margin-bottom:0}
+    .exercise.selected{border-color:#52635a;background:#141b18;box-shadow:inset 3px 0 0 #a9ffcf}
+    .exercise.complete{opacity:.66}
+    .exercise-num{width:38px;color:#5e6863;font-size:10px;font-weight:850;letter-spacing:.1em}
+    .exercise-main{min-width:0;flex:1}
+    .exercise-name{overflow:hidden;color:#dce2de;font-size:17px;font-size:clamp(15px,1.25vw,20px);font-weight:700;line-height:1.05;text-overflow:ellipsis;white-space:nowrap}
+    .exercise-meta{margin-top:5px;color:#68726d;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+    .set-dots{display:flex;align-items:center;margin-left:14px}
+    .set-dot{width:7px;height:7px;margin-left:6px;border:1px solid #4b5650;border-radius:50%;background:transparent}
+    .set-dot.done{border-color:#a9ffcf;background:#a9ffcf}
+    .set-count{width:48px;margin-left:15px;color:#aeb7b2;font-size:13px;font-weight:800;text-align:right}
+
+    .rest-layout{flex:1;min-height:0;display:flex}
+    .rest-hero{width:40%;height:100%;margin-right:14px;border:1px solid #26302b;border-radius:18px;background:#101513;padding:26px 28px;display:flex;flex-direction:column;justify-content:space-between}
+    .rest-word{font-size:68px;font-size:clamp(52px,5vw,82px);font-weight:800;letter-spacing:-.065em;line-height:.84}
+    .rest-copy{max-width:420px;margin-top:14px;color:#8d9692;font-size:14px;line-height:1.45}
+    .readiness{display:flex;align-items:center;border-top:1px solid #29312e;padding-top:18px}
+    .readiness-score{color:#a9ffcf;font-size:32px;font-weight:780;letter-spacing:-.04em}
+    .readiness-copy{margin-left:14px}
+    .readiness-copy b{display:block;color:#dce2de;font-size:13px}
+    .readiness-copy span{display:block;margin-top:4px;color:#747d79;font-size:10px}
+    .rest-side{width:60%;height:100%;min-height:0;display:flex;flex-direction:column}
+    .next-card{flex:1;min-height:0;border:1px solid #29342e;border-radius:18px;background:#121815;padding:22px 24px;display:flex;align-items:center;justify-content:space-between}
+    .next-day{margin-top:8px;color:#a9ffcf;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+    .next-name{margin-top:8px;font-size:31px;font-size:clamp(26px,2.4vw,38px);font-weight:760;letter-spacing:-.035em}
+    .next-meta{display:flex;margin-top:14px}
+    .next-meta span{margin-right:18px;color:#7b8580;font-size:10px;font-weight:750;text-transform:uppercase}
+    .next-arrow{color:#a9ffcf;font-size:42px;font-weight:300}
+    .recovery-card{flex:0 0 auto;margin-top:12px;border:1px solid #212924;border-radius:14px;background:#0c100f;padding:15px 18px}
+    .recovery-line{display:flex;align-items:center;justify-content:space-between}
+    .recovery-line strong{font-size:13px}
+    .recovery-actions{color:#7f8984;font-size:11px}
+
+    .week-strip{flex:0 0 72px;display:flex;margin-top:12px}
+    .week-day{position:relative;flex:1;margin-right:7px;border:1px solid #202824;border-radius:11px;background:#0b0f0e;padding:11px 12px;cursor:pointer}
+    .week-day:last-child{margin-right:0}
+    .week-day.selected{border-color:#55675e;background:#141a17}
+    .week-day.training:after{content:"";position:absolute;right:10px;top:10px;width:5px;height:5px;border-radius:50%;background:#a9ffcf}
+    .week-day span{display:block;color:#66706b;font-size:9px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
+    .week-day b{display:block;margin-top:8px;color:#cbd2ce;font-size:12px}
+    .week-day.selected b{color:#fff}
+
+    .progress-layout{flex:1;min-height:0;display:flex}
+    .progress-kpis{width:46%;margin-right:14px;display:flex;flex-wrap:wrap}
+    .kpi{width:50%;min-height:0;border:1px solid #222b27;background:#0d1210;padding:18px 20px}
+    .kpi:first-child{width:100%;border-radius:16px 16px 0 0}
+    .kpi:nth-child(2){border-radius:0 0 0 16px}
+    .kpi:nth-child(3){border-radius:0 0 16px 0}
+    .kpi-value{margin-top:10px;font-size:39px;font-weight:780;letter-spacing:-.05em}
+    .bar{height:5px;margin-top:13px;overflow:hidden;border-radius:8px;background:#27302c}
+    .bar i{display:block;height:100%;background:#a9ffcf}
+    .history-panel{width:54%;min-height:0;border:1px solid #222b27;border-radius:16px;background:#0d1210;padding:19px 21px;display:flex;flex-direction:column}
+    .history{flex:1;min-height:0;margin-top:10px;display:flex;flex-direction:column}
+    .history-row{flex:1;min-height:0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #222a26;color:#aab3ae;font-size:12px}
+    .history-row:last-child{border-bottom:0}
+    .history-row span{color:#66706b}
+    .empty{display:flex;align-items:center;height:100%;color:#69736e;font-size:12px}
+
+    .footerbar{flex:0 0 28px;display:flex;align-items:flex-end;justify-content:space-between;margin-top:10px}
+    .control-hint{color:#59635e;font-size:9px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}
+    .key{display:inline-block;margin:0 4px;border:1px solid #303a35;border-radius:5px;padding:3px 6px;color:#98a29d}
+    .day-nav{display:flex}
+    .day-nav button{margin-left:5px;border:1px solid #27312c;border-radius:7px;background:#0d1210;color:#7f8984;padding:6px 9px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+    .day-nav button.today{color:#dfe6e2;border-color:#3b4942}
+
+    @media(max-height:760px) and (min-width:901px){
+      body{padding:20px 30px}
+      .welcome{font-size:29px}
+      .dayline{margin-top:5px;font-size:13px}
+      .whoop,.status{height:70px;flex-basis:70px;margin-top:12px}
+      .metric{padding:10px 16px}
+      .metric b{font-size:21px}
+      .trend{right:14px;bottom:9px}
+      .workspace{margin-top:12px}
+      .view-head{margin-bottom:9px}
+      .view-title{font-size:31px}
+      .view-subtitle{margin-top:4px}
+      .focus-card{padding:18px 22px}
+      .focus-name{margin-top:12px;font-size:26px}
+      .focus-prescription{margin-top:7px;font-size:12px}
+      .set-track{margin-top:10px}
+      .focus-hint{margin-top:9px}
+      .exercise{margin-bottom:5px}
+      .footerbar{margin-top:6px}
+    }
+
+    @media(max-width:900px){
+      html,body{height:auto;overflow:auto}
+      body{height:auto;min-height:100vh;padding:20px}
+      .screen{height:auto;min-height:100vh}
+      .topbar,.training-layout,.rest-layout,.progress-layout{display:block}
+      .toolbar{margin-top:16px;justify-content:flex-start;flex-wrap:wrap}
+      .toolbar-group{margin:8px 8px 0 0}
+      .whoop{height:auto;flex-wrap:wrap}
+      .metric{min-width:50%;border-bottom:1px solid #202723}
+      .workspace{overflow:visible}
+      .focus-card,.session-list,.rest-hero,.rest-side,.progress-kpis,.history-panel{width:100%;height:auto}
+      .focus-card,.rest-hero,.progress-kpis{margin:0 0 12px}
+      .focus-card{min-height:330px}
+      .exercise{min-height:64px}
+      .week-strip{overflow:auto}
+      .week-day{min-width:105px}
+      .footerbar{margin-top:18px}
+    }
+  </style>
+</head>
+<body>
+  <main class="screen">
+    <header class="topbar">
+      <div class="identity">
+        <div class="kicker">Shop Training <strong id="planName">Live</strong></div>
+        <div class="welcome" id="hello">HELLO</div>
+        <div class="dayline" id="date"></div>
+      </div>
+      <div class="toolbar">
+        <div class="live"><i class="live-dot"></i><span id="whoopLive">WHOOP LIVE</span></div>
+        <div class="clock" id="clock"></div>
+        <div class="preview-chip" id="preview">Preview</div>
+        <div class="toolbar-group">
+          <button id="jordanBtn" onclick="setProfile('jordan')">Jordan</button>
+          <button id="kelseyBtn" onclick="setProfile('kelsey')">Kelsey</button>
+        </div>
+        <div class="toolbar-group">
+          <button id="todayTab" class="active" onclick="setView('today')">Session</button>
+          <button id="progressTab" onclick="setView('progress')">Progress</button>
+        </div>
+      </div>
+    </header>
+
+    <section id="whoop" class="status">Loading WHOOP…</section>
+    <section class="workspace" id="content"></section>
+
+    <footer class="footerbar">
+      <div class="control-hint" id="controlHint"><span class="key">↑ ↓</span> Select <span class="key">Enter</span> Complete set</div>
+      <div class="day-nav">
+        <button onclick="changeDay(-1)">‹ Day</button>
+        <button class="today" onclick="useToday()">Today</button>
+        <button onclick="changeDay(1)">Day ›</button>
+      </div>
+    </footer>
+  </main>
+  <script src="/app-legacy.js"></script>
+</body>
+</html>
