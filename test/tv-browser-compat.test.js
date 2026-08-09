@@ -6,7 +6,7 @@ import vm from 'node:vm';
 
 const elementIds = [
   'planName', 'hello', 'date', 'clock', 'preview', 'jordanBtn', 'kelseyBtn',
-  'whoopLive', 'todayTab', 'progressTab', 'whoop', 'content', 'controlHint'
+  'whoopLive', 'todayTab', 'progressTab', 'whoop', 'content', 'controlHint', 'toast'
 ];
 
 function createElementMap() {
@@ -43,6 +43,9 @@ test('desktop TV layout is locked to one viewport with flexible exercise rows', 
   assert.match(html, /\.workspace\{[^}]*flex:1;min-height:0;[^}]*overflow:hidden/);
   assert.match(html, /\.training-layout\{[^}]*flex:1;min-height:0;display:flex/);
   assert.match(html, /\.exercise\{[^}]*flex:1;min-height:0;[^}]*display:flex/);
+  assert.match(html, /\.toolbar button\.remote-focus\{[^}]*outline:2px solid #a9ffcf/);
+  assert.match(html, /\.exercise\.remote-focus\{[^}]*box-shadow:[^}]*#a9ffcf/);
+  assert.match(html, /\.timer-value\{[^}]*color:#a9ffcf/);
   assert.match(html, /@media\(max-width:900px\)\{\s*html,body\{height:auto;overflow:auto\}/);
   assert.doesNotMatch(html, /max-width:(?:1000|1100|1420)px/);
 });
@@ -120,7 +123,7 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
 
   context.setDay('Monday');
   assert.match(elements.content.innerHTML, /PUSH SESSION/);
-  assert.match(elements.content.innerHTML, /class="focus-card"/);
+  assert.match(elements.content.innerHTML, /class="focus-card remote-focus"/);
   assert.match(elements.content.innerHTML, /Dumbbell Bench Press/);
   assert.match(elements.content.innerHTML, /Est\. time/);
   assert.equal((elements.content.innerHTML.match(/onclick="selectExercise\(/g) || []).length, 5);
@@ -128,6 +131,8 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
   context.completeSet();
   assert.match(elements.content.innerHTML, /1<\/strong><span>of 3 sets complete/);
   assert.match(elements.content.innerHTML, /set-segment done/);
+  assert.match(elements.content.innerHTML, /Rest timer/);
+  assert.match(elements.content.innerHTML, /Back undoes the last set/);
 
   context.setDay('Sunday');
   assert.match(elements.content.innerHTML, /RECOVERY DAY/);
@@ -142,6 +147,89 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
 
   assert.ok(requests.some((url) => url.startsWith('/workouts.json')));
   assert.ok(requests.some((url) => url.startsWith('/api/whoop-data')));
+});
+
+test('five-way remote navigation, timer persistence, auto-advance, and undo work together', async () => {
+  const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
+  const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
+  const elements = createElementMap();
+  const storage = new Map();
+  const intervals = [];
+  let keydown;
+
+  class FakeXmlHttpRequest {
+    open(_method, url) {
+      this.url = url;
+    }
+
+    send() {
+      this.readyState = 4;
+      this.status = 200;
+      this.responseText = this.url.startsWith('/workouts.json')
+        ? JSON.stringify(workouts)
+        : JSON.stringify({});
+      this.onreadystatechange();
+    }
+  }
+
+  const context = {
+    console,
+    document: {
+      getElementById: (id) => elements[id],
+      addEventListener(type, listener) {
+        if (type === 'keydown') keydown = listener;
+      }
+    },
+    history: { replaceState() {} },
+    location: { search: '?day=Monday', pathname: '/' },
+    localStorage: {
+      getItem: (key) => storage.get(key) || null,
+      setItem: (key, value) => storage.set(key, value)
+    },
+    XMLHttpRequest: FakeXmlHttpRequest,
+    setInterval(callback) {
+      intervals.push(callback);
+    },
+    setTimeout() { return 1; },
+    clearTimeout() {}
+  };
+  context.window = context;
+  vm.runInNewContext(source, context);
+
+  const press = (key, keyCode) => keydown({ key, keyCode, preventDefault() {} });
+
+  assert.match(elements.content.innerHTML, /exercise selected remote-focus/);
+  press('ArrowUp', 38);
+  assert.match(elements.todayTab.className, /remote-focus/);
+  press('ArrowLeft', 37);
+  assert.match(elements.kelseyBtn.className, /remote-focus/);
+  press('ArrowRight', 39);
+  press('ArrowDown', 40);
+  assert.match(elements.content.innerHTML, /exercise selected remote-focus/);
+
+  press('Enter', 13);
+  assert.match(elements.content.innerHTML, /Rest timer/);
+  assert.match(elements.content.innerHTML, /1<\/strong><span>of 3 sets complete/);
+  const uiKey = [...storage.keys()].find((key) => key.startsWith('shopSessionUI:jordan:'));
+  const storedUi = JSON.parse(storage.get(uiKey));
+  assert.ok(storedUi.restTimerEnd > Date.now());
+  assert.equal(storedUi.lastAction.previousDone, 0);
+
+  press('Enter', 13);
+  assert.doesNotMatch(elements.content.innerHTML, /Rest timer/);
+  press('Enter', 13);
+  press('Enter', 13);
+  press('Enter', 13);
+  assert.match(elements.content.innerHTML, /Incline Dumbbell Press/);
+  assert.match(elements.content.innerHTML, /Next: Incline Dumbbell Press/);
+
+  press('Backspace', 8);
+  assert.match(elements.content.innerHTML, /Dumbbell Bench Press/);
+  assert.match(elements.content.innerHTML, /2<\/strong><span>of 3 sets complete/);
+  assert.doesNotMatch(elements.content.innerHTML, /Rest timer/);
+  assert.match(elements.toast.className, /visible/);
+
+  assert.ok(intervals.length >= 3);
 });
 
 test('all seven day previews render without overflowing the exercise budget', async () => {
