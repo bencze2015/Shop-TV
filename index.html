@@ -21,6 +21,7 @@
     .toolbar-group{display:flex;margin-left:10px;padding:3px;border:1px solid #222a27;border-radius:10px;background:#0b0f0e}
     .toolbar button{border:0;border-radius:7px;background:transparent;color:#76807b;padding:7px 10px;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
     .toolbar button.active{background:#e8eee9;color:#101411}
+    .toolbar button.remote-focus{outline:2px solid #a9ffcf;outline-offset:3px;box-shadow:0 0 18px rgba(169,255,207,.18)}
     .live{display:flex;align-items:center;color:#89938e;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
     .live-dot{width:6px;height:6px;margin-right:7px;border-radius:50%;background:#73e4a4;box-shadow:0 0 12px rgba(115,228,164,.45)}
     .clock{margin-left:14px;color:#d8ddda;font-size:13px;font-weight:700;white-space:nowrap}
@@ -50,6 +51,7 @@
 
     .training-layout{flex:1;min-height:0;display:flex}
     .focus-card{position:relative;width:38%;height:100%;min-height:0;margin-right:14px;overflow:hidden;border:1px solid #29332e;border-radius:18px;background:#111614;background:linear-gradient(145deg,#18201c 0,#101513 54%,#0c100f 100%);padding:25px 27px;display:flex;flex-direction:column}
+    .focus-card.remote-focus{border-color:#62796d;box-shadow:inset 0 0 0 1px rgba(169,255,207,.18),0 0 24px rgba(61,119,87,.08)}
     .focus-card:after{content:"";position:absolute;width:230px;height:230px;right:-100px;top:-110px;border:1px solid rgba(169,255,207,.12);border-radius:50%;box-shadow:0 0 70px rgba(85,184,127,.08)}
     .focus-top{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center}
     .focus-index{color:#a9ffcf;font-size:11px;font-weight:850;letter-spacing:.14em}
@@ -64,11 +66,19 @@
     .set-segment{height:7px;flex:1;margin-right:7px;border-radius:8px;background:#2b3430}
     .set-segment.done{background:#a9ffcf;box-shadow:0 0 14px rgba(169,255,207,.18)}
     .focus-hint{margin-top:15px;color:#737c78;font-size:10px;font-weight:750;letter-spacing:.06em}
+    .focus-middle{position:relative;z-index:1;margin:auto 0;text-align:center}
+    .stage-label,.timer-label{color:#75807a;font-size:9px;font-weight:850;letter-spacing:.18em;text-transform:uppercase}
+    .stage-value{margin-top:7px;color:#dfe6e2;font-size:38px;font-weight:780;letter-spacing:-.04em}
+    .timer-value{margin-top:6px;color:#a9ffcf;font-size:58px;font-size:clamp(46px,4.2vw,68px);font-weight:790;letter-spacing:-.065em;line-height:.9}
+    .timer-next{margin-top:10px;color:#828c87;font-size:10px;font-weight:700}
+    .timer-track{height:4px;margin:14px auto 0;max-width:220px;overflow:hidden;border-radius:4px;background:#2c3631}
+    .timer-track i{display:block;height:100%;background:#a9ffcf}
 
     .session-list{width:62%;height:100%;min-height:0;display:flex;flex-direction:column}
     .exercise{position:relative;flex:1;min-height:0;display:flex;align-items:center;margin-bottom:7px;border:1px solid #1f2723;border-radius:12px;background:#0c100f;padding:7px 14px;cursor:pointer;overflow:hidden}
     .exercise:last-child{margin-bottom:0}
-    .exercise.selected{border-color:#52635a;background:#141b18;box-shadow:inset 3px 0 0 #a9ffcf}
+    .exercise.selected{background:#111714}
+    .exercise.remote-focus{border-color:#62796d;background:#141b18;box-shadow:inset 3px 0 0 #a9ffcf,0 0 18px rgba(61,119,87,.08)}
     .exercise.complete{opacity:.66}
     .exercise-num{width:38px;color:#5e6863;font-size:10px;font-weight:850;letter-spacing:.1em}
     .exercise-main{min-width:0;flex:1}
@@ -104,6 +114,7 @@
     .week-day{position:relative;flex:1;margin-right:7px;border:1px solid #202824;border-radius:11px;background:#0b0f0e;padding:11px 12px;cursor:pointer}
     .week-day:last-child{margin-right:0}
     .week-day.selected{border-color:#55675e;background:#141a17}
+    .week-day.remote-focus{outline:2px solid #a9ffcf;outline-offset:2px}
     .week-day.training:after{content:"";position:absolute;right:10px;top:10px;width:5px;height:5px;border-radius:50%;background:#a9ffcf}
     .week-day span{display:block;color:#66706b;font-size:9px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
     .week-day b{display:block;margin-top:8px;color:#cbd2ce;font-size:12px}
@@ -131,6 +142,8 @@
     .day-nav{display:flex}
     .day-nav button{margin-left:5px;border:1px solid #27312c;border-radius:7px;background:#0d1210;color:#7f8984;padding:6px 9px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
     .day-nav button.today{color:#dfe6e2;border-color:#3b4942}
+    .toast{position:fixed;z-index:20;left:50%;bottom:48px;display:none;min-width:280px;padding:11px 16px;border:1px solid #46564e;border-radius:999px;background:#121915;color:#dfe7e2;font-size:10px;font-weight:850;letter-spacing:.1em;text-align:center;text-transform:uppercase;transform:translateX(-50%);box-shadow:0 12px 40px rgba(0,0,0,.45)}
+    .toast.visible{display:block}
 
     @media(max-height:760px) and (min-width:901px){
       body{padding:20px 30px}
@@ -208,6 +221,7 @@
       </div>
     </footer>
   </main>
+  <div class="toast" id="toast"></div>
   <script src="/app-legacy.js"></script>
 </body>
 </html>

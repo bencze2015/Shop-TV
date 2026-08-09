@@ -2,13 +2,23 @@
   var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   var weekOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   var realNow = new Date();
-  var selectedDay = queryValue('day');
+  var requestedDay = queryValue('day');
+  var selectedDay = requestedDay;
   var data = { profiles: {} };
   var profileId = readStorage('shopProfile') || 'jordan';
   var profile = { name: 'Jordan', week: {} };
   var whoopData = null;
   var view = 'today';
   var selectedExercise = 0;
+  var focusZone = 'workout';
+  var toolbarIndex = 2;
+  var restTimerEnd = 0;
+  var restTimerDuration = 0;
+  var restTimerExerciseId = null;
+  var lastAction = null;
+  var audioContext = null;
+  var wakeLock = null;
+  var toastTimeout = null;
   var WHOOP_AUTH = '/api/whoop-connect';
 
   var elements = {
@@ -24,8 +34,10 @@
     progressTab: byId('progressTab'),
     whoop: byId('whoop'),
     content: byId('content'),
-    controlHint: byId('controlHint')
+    controlHint: byId('controlHint'),
+    toast: byId('toast')
   };
+  var toolbarElements = [elements.jordanBtn, elements.kelseyBtn, elements.todayTab, elements.progressTab];
 
   if (days.indexOf(selectedDay) < 0) selectedDay = days[realNow.getDay()];
 
@@ -82,6 +94,48 @@
     return 'shopHistory:' + profileId;
   }
 
+  function uiStateKey() {
+    return 'shopSessionUI:' + profileId + ':' + todayKey();
+  }
+
+  function saveUiState() {
+    writeStorage(uiStateKey(), JSON.stringify({
+      selectedDay: selectedDay,
+      selectedExercise: selectedExercise,
+      view: view,
+      focusZone: focusZone,
+      toolbarIndex: toolbarIndex,
+      restTimerEnd: restTimerEnd,
+      restTimerDuration: restTimerDuration,
+      restTimerExerciseId: restTimerExerciseId,
+      lastAction: lastAction
+    }));
+  }
+
+  function restoreUiState() {
+    var saved = parseStoredJson(uiStateKey(), null);
+    if (!saved) return;
+    if (days.indexOf(requestedDay) < 0 && days.indexOf(saved.selectedDay) >= 0) {
+      selectedDay = saved.selectedDay;
+    }
+    if (typeof saved.selectedExercise === 'number' && saved.selectedExercise >= 0) {
+      selectedExercise = saved.selectedExercise;
+    }
+    if (saved.view === 'today' || saved.view === 'progress') view = saved.view;
+    if (saved.focusZone === 'workout' || saved.focusZone === 'day' || saved.focusZone === 'toolbar') {
+      focusZone = saved.focusZone;
+    }
+    if (typeof saved.toolbarIndex === 'number' && saved.toolbarIndex >= 0 && saved.toolbarIndex < 4) {
+      toolbarIndex = saved.toolbarIndex;
+    }
+    if (finiteNumber(saved.restTimerEnd) && saved.restTimerEnd > new Date().getTime()) {
+      restTimerEnd = saved.restTimerEnd;
+      restTimerDuration = saved.restTimerDuration || 0;
+      restTimerExerciseId = saved.restTimerExerciseId || null;
+    }
+    if (saved.lastAction && saved.lastAction.exerciseId) lastAction = saved.lastAction;
+  }
+
   function setClass(element, className, enabled) {
     var expression = new RegExp('(^|\\s)' + className + '(?=\\s|$)', 'g');
     var current = element.className || '';
@@ -117,6 +171,115 @@
       finish('Network request failed', {}, 0);
     };
     request.send(null);
+  }
+
+  function showToast(message) {
+    elements.toast.textContent = message;
+    setClass(elements.toast, 'visible', true);
+    if (toastTimeout && window.clearTimeout) window.clearTimeout(toastTimeout);
+    if (window.setTimeout) {
+      toastTimeout = window.setTimeout(function () {
+        setClass(elements.toast, 'visible', false);
+      }, 5000);
+    }
+  }
+
+  function unlockAudio() {
+    var AudioContextClass;
+    try {
+      AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      if (!audioContext) audioContext = new AudioContextClass();
+      if (audioContext.resume) audioContext.resume();
+    } catch (audioError) {
+      audioContext = null;
+    }
+  }
+
+  function playChime() {
+    var oscillator;
+    var gain;
+    try {
+      if (!audioContext) return;
+      oscillator = audioContext.createOscillator();
+      gain = audioContext.createGain();
+      oscillator.frequency.value = 880;
+      gain.gain.value = 0.045;
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      if (oscillator.start) oscillator.start();
+      else oscillator.noteOn(0);
+      if (oscillator.stop) oscillator.stop(audioContext.currentTime + 0.16);
+      else oscillator.noteOff(audioContext.currentTime + 0.16);
+    } catch (audioError) {
+      return;
+    }
+  }
+
+  function requestWakeLock() {
+    var request;
+    try {
+      if (typeof navigator === 'undefined' || !navigator.wakeLock || !navigator.wakeLock.request) return;
+      request = navigator.wakeLock.request('screen');
+      if (request && request.then) {
+        request.then(function (lock) {
+          wakeLock = lock;
+        }, function () {
+          wakeLock = null;
+        });
+      }
+    } catch (wakeError) {
+      wakeLock = null;
+    }
+  }
+
+  function timerRemaining() {
+    return restTimerEnd ? Math.max(0, Math.ceil((restTimerEnd - new Date().getTime()) / 1000)) : 0;
+  }
+
+  function timerActive() {
+    return timerRemaining() > 0;
+  }
+
+  function formatTimer(seconds) {
+    return Math.floor(seconds / 60) + ':' + pad2(seconds % 60);
+  }
+
+  function clearRestTimer() {
+    restTimerEnd = 0;
+    restTimerDuration = 0;
+    restTimerExerciseId = null;
+    saveUiState();
+  }
+
+  function startRestTimer(seconds, exerciseId) {
+    restTimerDuration = seconds;
+    restTimerEnd = new Date().getTime() + seconds * 1000;
+    restTimerExerciseId = exerciseId;
+    saveUiState();
+  }
+
+  function updateRestTimer() {
+    var remaining;
+    var value;
+    var fill;
+    var percent;
+    if (!restTimerEnd) return;
+    remaining = timerRemaining();
+    if (remaining <= 0) {
+      clearRestTimer();
+      playChime();
+      showToast('Rest complete · Next set ready');
+      renderContent();
+      return;
+    }
+    value = byId('restTimerValue');
+    fill = byId('restTimerFill');
+    if (value) value.textContent = formatTimer(remaining);
+    if (fill) {
+      percent = restTimerDuration ? Math.round(remaining / restTimerDuration * 100) : 0;
+      fill.style.width = percent + '%';
+    }
   }
 
   function loadState() {
@@ -228,10 +391,19 @@
 
   function setProfile(id) {
     if (!data.profiles[id]) return;
+    saveUiState();
     profileId = id;
     profile = data.profiles[id];
     writeStorage('shopProfile', id);
     selectedExercise = 0;
+    view = 'today';
+    restTimerEnd = 0;
+    restTimerDuration = 0;
+    restTimerExerciseId = null;
+    lastAction = null;
+    restoreUiState();
+    focusZone = 'toolbar';
+    toolbarIndex = id === 'jordan' ? 0 : 1;
     whoopData = null;
     renderAll();
     loadWhoop();
@@ -246,6 +418,13 @@
     elements.clock.textContent = hours + ':' + minutes + ' ' + suffix;
   }
 
+  function applyToolbarFocus() {
+    var index;
+    for (index = 0; index < toolbarElements.length; index += 1) {
+      setClass(toolbarElements[index], 'remote-focus', focusZone === 'toolbar' && index === toolbarIndex);
+    }
+  }
+
   function renderHeader() {
     var plan = planFor(selectedDay);
     var isToday = selectedDay === days[realNow.getDay()];
@@ -254,6 +433,7 @@
     setClass(elements.jordanBtn, 'active', profileId === 'jordan');
     setClass(elements.kelseyBtn, 'active', profileId === 'kelsey');
     setClass(elements.preview, 'visible', !isToday);
+    applyToolbarFocus();
     elements.date.textContent = isToday
       ? realNow.toLocaleDateString('en-US', {
           weekday: 'long',
@@ -296,6 +476,7 @@
       plan = planFor(day);
       html += '<div class="week-day ' +
         (day === selectedDay ? 'selected ' : '') +
+        (focusZone === 'day' && day === selectedDay ? 'remote-focus ' : '') +
         (plan.exercises && plan.exercises.length ? 'training' : '') +
         '" onclick="setDay(\'' + day + '\')">' +
         '<span>' + day.slice(0, 3) + '</span><b>' +
@@ -317,15 +498,32 @@
     var exercise;
     var done;
     var className;
+    var remaining;
+    var middleHtml;
+    var nextSet;
     if (selectedExercise >= items.length) selectedExercise = Math.max(items.length - 1, 0);
     selected = items[selectedExercise];
     selectedDone = Math.min(state.sets[selected.id] || 0, selected.sets);
+    remaining = timerRemaining();
+    if (remaining > 0) {
+      middleHtml = '<div class="focus-middle timer-block"><div class="timer-label">Rest timer</div>' +
+        '<div class="timer-value" id="restTimerValue">' + formatTimer(remaining) + '</div>' +
+        '<div class="timer-next">Next: ' + selected.name + '</div>' +
+        '<div class="timer-track"><i id="restTimerFill" style="width:' +
+        (restTimerDuration ? Math.round(remaining / restTimerDuration * 100) : 0) + '%"></i></div></div>';
+    } else {
+      nextSet = Math.min(selectedDone + 1, selected.sets);
+      middleHtml = '<div class="focus-middle"><div class="stage-label">' +
+        (selectedDone >= selected.sets ? 'Movement' : 'Next set') + '</div>' +
+        '<div class="stage-value">' + (selectedDone >= selected.sets ? 'DONE' : pad2(nextSet)) + '</div></div>';
+    }
 
     for (index = 0; index < items.length; index += 1) {
       exercise = items[index];
       done = Math.min(state.sets[exercise.id] || 0, exercise.sets);
       className = 'exercise';
       if (index === selectedExercise) className += ' selected';
+      if (focusZone === 'workout' && index === selectedExercise) className += ' remote-focus';
       if (done >= exercise.sets) className += ' complete';
       rows += '<div class="' + className + '" onclick="selectExercise(' + index + ')">' +
         '<span class="exercise-num">' + pad2(index + 1) + '</span>' +
@@ -347,20 +545,22 @@
       summaryItem('Est. time', summary.minutes + ' min') +
       '</div></div>' +
       '<div class="training-layout">' +
-      '<div class="focus-card"><div class="focus-top"><span class="focus-index">NOW · ' +
+      '<div class="focus-card ' + (focusZone === 'workout' ? 'remote-focus' : '') + '"><div class="focus-top"><span class="focus-index">NOW · ' +
       pad2(selectedExercise + 1) + '</span><span class="focus-state">' +
       (selectedDone >= selected.sets ? 'Complete' : 'In progress') + '</span></div>' +
       '<div class="focus-name">' + selected.name + '</div>' +
       '<div class="focus-prescription">' + selected.sets + ' sets · ' +
       selected.reps + ' reps · ' + selected.restSeconds + ' sec rest</div>' +
+      middleHtml +
       '<div class="set-section"><div class="set-readout"><strong>' + selectedDone +
       '</strong><span>of ' + selected.sets + ' sets complete</span></div>' +
       '<div class="set-track">' + setSegments(selectedDone, selected.sets) + '</div>' +
-      '<div class="focus-hint">Press Enter to mark the next set complete</div></div></div>' +
+      '<div class="focus-hint">' + (remaining > 0 ? 'Enter skips rest · Back undoes the last set' : 'Enter marks the next set complete') + '</div></div></div>' +
       '<div class="session-list">' + rows + '</div></div></div>';
 
     elements.controlHint.innerHTML =
-      '<span class="key">↑ ↓</span> Select movement <span class="key">Enter</span> Complete set';
+      '<span class="key">↑ ↓</span> Movement <span class="key">← →</span> Day ' +
+      '<span class="key">Enter</span> Complete / skip <span class="key">Back</span> Undo';
   }
 
   function readinessInfo() {
@@ -406,7 +606,8 @@
       '<div class="recovery-actions">Easy movement · Mobility · Hydration · Sleep on schedule</div></div></div></div></div>' +
       weekStrip() + '</div>';
     elements.controlHint.innerHTML =
-      '<span class="key">← →</span> Change day <span class="key">Today</span> Return to live';
+      '<span class="key">↑</span> Menu <span class="key">← →</span> Change day ' +
+      '<span class="key">Today</span> Return to live';
   }
 
   function renderProgress() {
@@ -439,7 +640,7 @@
       '<div class="history-panel"><div class="card-label">Recent sessions</div>' +
       '<div class="history">' + historyHtml + '</div></div></div></div>';
     elements.controlHint.innerHTML =
-      '<span class="key">Session</span> Return to today <span class="key">← →</span> Preview days';
+      '<span class="key">← →</span> Choose menu <span class="key">Enter</span> Open';
   }
 
   function renderContent() {
@@ -465,21 +666,88 @@
     var state;
     var index;
     var complete = true;
+    var previousDone;
+    var newDone;
     if (view !== 'today') return;
+    if (timerActive()) {
+      clearRestTimer();
+      showToast('Rest skipped · Next set ready');
+      renderContent();
+      return;
+    }
     plan = planFor(selectedDay);
     exercise = plan.exercises && plan.exercises[selectedExercise];
     if (!exercise) return;
     state = loadState();
-    state.sets[exercise.id] = Math.min((state.sets[exercise.id] || 0) + 1, exercise.sets);
+    previousDone = state.sets[exercise.id] || 0;
+    if (previousDone >= exercise.sets) return;
+    unlockAudio();
+    requestWakeLock();
+    lastAction = {
+      exerciseId: exercise.id,
+      previousDone: previousDone,
+      previousCompleted: !!state.completed,
+      previousSelectedExercise: selectedExercise,
+      selectedDay: selectedDay
+    };
+    newDone = Math.min(previousDone + 1, exercise.sets);
+    state.sets[exercise.id] = newDone;
     for (index = 0; index < plan.exercises.length; index += 1) {
       if ((state.sets[plan.exercises[index].id] || 0) < plan.exercises[index].sets) complete = false;
     }
     state.completed = complete;
+    if (newDone >= exercise.sets && selectedExercise < plan.exercises.length - 1) {
+      selectedExercise += 1;
+    }
+    if (complete) {
+      clearRestTimer();
+    } else {
+      startRestTimer(exercise.restSeconds, exercise.id);
+    }
+    saveUiState();
     saveState(state);
+    showToast(complete
+      ? 'Workout complete · Excellent work'
+      : (newDone >= exercise.sets ? 'Movement complete · Advanced to next' : 'Set ' + newDone + ' complete · Back to undo'));
+  }
+
+  function removeTodayFromHistory() {
+    var history = parseStoredJson(historyKey(), []);
+    var filtered = [];
+    var index;
+    for (index = 0; index < history.length; index += 1) {
+      if (history[index].date !== todayKey()) filtered.push(history[index]);
+    }
+    writeStorage(historyKey(), JSON.stringify(filtered));
+  }
+
+  function undoLastSet() {
+    var action = lastAction;
+    var state;
+    if (!action || !action.exerciseId) return false;
+    selectedDay = action.selectedDay;
+    selectedExercise = action.previousSelectedExercise;
+    state = loadState();
+    state.sets[action.exerciseId] = action.previousDone;
+    state.completed = action.previousCompleted;
+    writeStorage(stateKey(), JSON.stringify(state));
+    if (!state.completed) removeTodayFromHistory();
+    restTimerEnd = 0;
+    restTimerDuration = 0;
+    restTimerExerciseId = null;
+    lastAction = null;
+    focusZone = 'workout';
+    saveUiState();
+    updateDayUrl(selectedDay);
+    renderContent();
+    showToast('Last set undone');
+    return true;
   }
 
   function selectExercise(index) {
     selectedExercise = index;
+    focusZone = 'workout';
+    saveUiState();
     renderContent();
   }
 
@@ -550,6 +818,31 @@
 
   function setView(newView) {
     view = newView;
+    focusZone = 'toolbar';
+    toolbarIndex = newView === 'progress' ? 3 : 2;
+    saveUiState();
+    renderContent();
+  }
+
+  function moveToolbar(amount) {
+    toolbarIndex = (toolbarIndex + amount + toolbarElements.length) % toolbarElements.length;
+    saveUiState();
+    applyToolbarFocus();
+  }
+
+  function activateToolbar() {
+    if (toolbarIndex === 0) setProfile('jordan');
+    else if (toolbarIndex === 1) setProfile('kelsey');
+    else if (toolbarIndex === 2) setView('today');
+    else setView('progress');
+  }
+
+  function enterContentFocus() {
+    var plan;
+    if (view !== 'today') return;
+    plan = planFor(selectedDay);
+    focusZone = plan.exercises && plan.exercises.length ? 'workout' : 'day';
+    saveUiState();
     renderContent();
   }
 
@@ -561,7 +854,9 @@
   function setDay(day) {
     selectedDay = day;
     selectedExercise = 0;
+    focusZone = planFor(day).exercises && planFor(day).exercises.length ? 'workout' : 'day';
     updateDayUrl(day);
+    saveUiState();
     renderContent();
   }
 
@@ -572,7 +867,10 @@
 
   function useToday() {
     selectedDay = days[realNow.getDay()];
+    selectedExercise = 0;
+    focusZone = planFor(selectedDay).exercises && planFor(selectedDay).exercises.length ? 'workout' : 'day';
     updateDayUrl(null);
+    saveUiState();
     renderContent();
   }
 
@@ -583,6 +881,7 @@
 
   function init() {
     requestJson('/workouts.json?time=' + new Date().getTime(), function (error, response) {
+      var restoredPlan;
       if (error) {
         elements.whoop.textContent = 'Startup error';
         elements.content.textContent = 'Workout program unavailable: ' + error;
@@ -591,10 +890,20 @@
       data = response;
       if (!data.profiles || !data.profiles[profileId]) profileId = 'jordan';
       profile = data.profiles[profileId];
+      restoreUiState();
+      restoredPlan = planFor(selectedDay);
+      if (view === 'progress') {
+        focusZone = 'toolbar';
+        toolbarIndex = 3;
+      } else if ((!restoredPlan.exercises || !restoredPlan.exercises.length) && focusZone === 'workout') {
+        focusZone = 'day';
+      }
       renderAll();
+      updateRestTimer();
       loadWhoop();
       window.setInterval(loadWhoop, 15 * 60 * 1000);
       window.setInterval(updateClock, 30 * 1000);
+      window.setInterval(updateRestTimer, 1000);
     });
   }
 
@@ -605,36 +914,78 @@
   window.useToday = useToday;
   window.renderContent = renderContent;
   window.completeSet = completeSet;
+  window.undoLastSet = undoLastSet;
   window.selectExercise = selectExercise;
+
+  function isBackKey(event) {
+    return event.key === 'Escape' || event.key === 'Backspace' ||
+      event.keyCode === 8 || event.keyCode === 27 || event.keyCode === 10009;
+  }
 
   if (document.addEventListener) {
     document.addEventListener('keydown', function (event) {
       var items;
+      if (isBackKey(event)) {
+        if (lastAction && undoLastSet()) {
+          event.preventDefault();
+          return;
+        }
+        if (focusZone === 'toolbar') {
+          event.preventDefault();
+          enterContentFocus();
+        }
+        return;
+      }
       if (event.key === 'ArrowLeft' || event.keyCode === 37) {
         event.preventDefault();
-        changeDay(-1);
+        if (focusZone === 'toolbar') moveToolbar(-1);
+        else changeDay(-1);
         return;
       }
       if (event.key === 'ArrowRight' || event.keyCode === 39) {
         event.preventDefault();
-        changeDay(1);
+        if (focusZone === 'toolbar') moveToolbar(1);
+        else changeDay(1);
         return;
       }
-      if (view !== 'today') return;
-      items = planFor(selectedDay).exercises || [];
       if (event.key === 'ArrowDown' || event.keyCode === 40) {
         event.preventDefault();
+        if (focusZone === 'toolbar') {
+          enterContentFocus();
+          return;
+        }
+        if (view !== 'today' || focusZone === 'day') return;
+        items = planFor(selectedDay).exercises || [];
         selectedExercise = Math.min(selectedExercise + 1, Math.max(items.length - 1, 0));
+        saveUiState();
         renderContent();
+        return;
       }
       if (event.key === 'ArrowUp' || event.keyCode === 38) {
         event.preventDefault();
-        selectedExercise = Math.max(selectedExercise - 1, 0);
+        if (focusZone === 'toolbar') return;
+        if (view !== 'today' || focusZone === 'day') {
+          focusZone = 'toolbar';
+          toolbarIndex = view === 'progress' ? 3 : 2;
+          saveUiState();
+          renderContent();
+          return;
+        }
+        items = planFor(selectedDay).exercises || [];
+        if (selectedExercise > 0) {
+          selectedExercise -= 1;
+        } else {
+          focusZone = 'toolbar';
+          toolbarIndex = 2;
+        }
+        saveUiState();
         renderContent();
+        return;
       }
       if (event.key === 'Enter' || event.keyCode === 13) {
         event.preventDefault();
-        completeSet();
+        if (focusZone === 'toolbar') activateToolbar();
+        else if (focusZone === 'workout') completeSet();
       }
     });
   }
