@@ -1,8 +1,98 @@
-function cookies(req){return Object.fromEntries((req.headers.cookie||'').split(';').map(v=>v.trim()).filter(Boolean).map(v=>{const i=v.indexOf('=');return [v.slice(0,i),decodeURIComponent(v.slice(i+1))]}));}
-async function whoop(path, token){const r=await fetch('https://api.prod.whoop.com/developer'+path,{headers:{Authorization:`Bearer ${token}`}});const text=await r.text();let data;try{data=JSON.parse(text)}catch{data={raw:text}};if(!r.ok)throw Object.assign(new Error(data?.error_description||data?.message||`WHOOP request failed (${r.status})`),{status:r.status,data});return data;}
-async function refresh(refreshToken){const clientId=process.env.WHOOP_CLIENT_ID,clientSecret=process.env.WHOOP_CLIENT_SECRET;if(!clientId||!clientSecret)throw new Error('WHOOP credentials missing');const body=new URLSearchParams({grant_type:'refresh_token',refresh_token:refreshToken,client_id:clientId,client_secret:clientSecret});const r=await fetch('https://api.prod.whoop.com/oauth/oauth2/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body.toString()});const data=await r.json();if(!r.ok)throw Object.assign(new Error(data?.error_description||'WHOOP refresh failed'),{status:r.status,data});return data;}
-function setTokens(res,data){const secure=process.env.NODE_ENV==='production'?'; Secure':'';const out=[];if(data.access_token)out.push(`whoop_access=${encodeURIComponent(data.access_token)}; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=${Number(data.expires_in||3600)}`);if(data.refresh_token)out.push(`whoop_refresh=${encodeURIComponent(data.refresh_token)}; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=2592000`);if(out.length)res.setHeader('Set-Cookie',out);}
-function avg(values){const v=values.filter(x=>Number.isFinite(x));return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;}
-async function load(token){const [recovery,cycle,sleep]=await Promise.all([whoop('/v2/recovery?limit=7',token),whoop('/v2/cycle?limit=7',token),whoop('/v2/activity/sleep?limit=10',token)]);const recs=recovery.records||[],cycles=cycle.records||[],sleeps=(sleep.records||[]).filter(x=>!x.nap).slice(0,7);const latestRecovery=recs[0]||null,latestCycle=cycles[0]||null,latestSleep=sleeps[0]||null;const recoveryScores=recs.map(x=>x?.score?.recovery_score),hrv=recs.map(x=>x?.score?.hrv_rmssd_milli),rhr=recs.map(x=>x?.score?.resting_heart_rate),strain=cycles.map(x=>x?.score?.strain),sleepPerf=sleeps.map(x=>x?.score?.sleep_performance_percentage);return {recovery:latestRecovery,cycle:latestCycle,sleep:latestSleep,trends:{recovery:{current:recoveryScores[0]??null,baseline:avg(recoveryScores.slice(1))},hrv:{current:hrv[0]??null,baseline:avg(hrv.slice(1))},restingHr:{current:rhr[0]??null,baseline:avg(rhr.slice(1))},strain:{current:strain[0]??null,baseline:avg(strain.slice(1))},sleep:{current:sleepPerf[0]??null,baseline:avg(sleepPerf.slice(1))}}};}
-export default async function handler(req,res){if(req.method!=='GET')return res.status(405).json({error:'Method not allowed'});const c=cookies(req);if(!c.whoop_access&&!c.whoop_refresh)return res.status(401).json({error:'WHOOP is not connected in this browser'});try{return res.status(200).json(await load(c.whoop_access));}catch(e){if(e.status!==401||!c.whoop_refresh)return res.status(e.status||500).json({error:e.message,details:e.data||null});try{const t=await refresh(c.whoop_refresh);setTokens(res,t);return res.status(200).json(await load(t.access_token));}catch(r){return res.status(r.status||500).json({error:r.message,details:r.data||null});}}
+import { loadWhoopData, refreshWhoopTokens } from '../lib/whoop-api.js';
+import { getWhoopTokenStore } from '../lib/whoop-token-store.js';
+
+const REFRESH_EARLY_MS = 60 * 1000;
+
+function accessTokenIsExpiring(tokens) {
+  return Number.isFinite(tokens?.expiresAt)
+    && tokens.expiresAt <= Date.now() + REFRESH_EARLY_MS;
+}
+
+async function refreshAndStore(store, currentTokens) {
+  try {
+    const response = await refreshWhoopTokens(currentTokens.refreshToken);
+    return await store.save(response, currentTokens);
+  } catch (error) {
+    // A concurrent request may already have rotated the refresh token. Prefer the
+    // newer shared record instead of failing this request with a stale token.
+    const latestTokens = await store.get();
+    if (
+      latestTokens?.accessToken
+      && latestTokens.updatedAt > (currentTokens.updatedAt || 0)
+    ) {
+      return latestTokens;
+    }
+    throw error;
+  }
+}
+
+function authorizationError(res, details) {
+  return res.status(401).json({
+    error: 'WHOOP authorization expired. Reconnect WHOOP from a phone or computer.',
+    details: details || null,
+  });
+}
+
+export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'private, no-store');
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  let store;
+  let tokens;
+  try {
+    store = getWhoopTokenStore();
+    tokens = await store.get();
+  } catch (error) {
+    return res.status(500).json({
+      error: 'WHOOP server-side token storage is unavailable.',
+      details: error.message || String(error),
+    });
+  }
+
+  if (!tokens?.accessToken && !tokens?.refreshToken) {
+    return res.status(401).json({
+      error: 'WHOOP is not connected on the server. Connect it from a phone or computer.',
+    });
+  }
+
+  if (!tokens.accessToken || accessTokenIsExpiring(tokens)) {
+    if (!tokens.refreshToken) return authorizationError(res);
+    try {
+      tokens = await refreshAndStore(store, tokens);
+    } catch (refreshError) {
+      if (refreshError.status === 400 || refreshError.status === 401) {
+        return authorizationError(res, refreshError.data || null);
+      }
+      return res.status(refreshError.status || 500).json({
+        error: refreshError.message,
+        details: refreshError.data || null,
+      });
+    }
+  }
+
+  try {
+    return res.status(200).json(await loadWhoopData(tokens.accessToken));
+  } catch (error) {
+    if (error.status !== 401 || !tokens.refreshToken) {
+      return res.status(error.status || 500).json({
+        error: error.message,
+        details: error.data || null,
+      });
+    }
+
+    try {
+      tokens = await refreshAndStore(store, tokens);
+      return res.status(200).json(await loadWhoopData(tokens.accessToken));
+    } catch (refreshError) {
+      if (refreshError.status === 400 || refreshError.status === 401) {
+        return authorizationError(res, refreshError.data || null);
+      }
+      return res.status(refreshError.status || 500).json({
+        error: refreshError.message,
+        details: refreshError.data || null,
+      });
+    }
+  }
 }
