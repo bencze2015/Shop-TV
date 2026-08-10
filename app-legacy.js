@@ -926,15 +926,15 @@
     celebrationTimeout = null;
   }
 
-  function compactCompletionMode() {
+  function inlineCompletionMode() {
     var userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
     return !!(window.innerWidth && window.innerWidth <= 900) ||
-      /iPhone|iPad|iPod|Android/i.test(userAgent);
+      /iPhone|iPad|iPod|Android|SMART-TV|SmartTV|Tizen|SamsungBrowser|Maple/i.test(userAgent);
   }
 
   function showCelebration(plan, state) {
     var summary = sessionSummary(plan);
-    if (compactCompletionMode()) {
+    if (inlineCompletionMode()) {
       dismissCelebration();
       showToast(plan.name + ' workout complete · Saved');
       return;
@@ -982,7 +982,7 @@
     trackingMode = 'ambient';
     ambientAction = 0;
     focusZone = 'ambient';
-    if (!compactCompletionMode()) {
+    if (!inlineCompletionMode()) {
       unlockAudio();
       requestWakeLock();
     }
@@ -1040,7 +1040,7 @@
     state = loadState();
     previousDone = state.sets[exercise.id] || 0;
     if (previousDone >= exercise.sets) return;
-    if (!compactCompletionMode()) {
+    if (!inlineCompletionMode()) {
       unlockAudio();
       requestWakeLock();
     }

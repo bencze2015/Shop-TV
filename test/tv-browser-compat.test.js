@@ -593,7 +593,7 @@ test('the TV applies live date exceptions without a refresh and keeps completion
   assert.doesNotMatch(elements.content.innerHTML, /WORKOUT COMPLETE/);
 });
 
-test('phone completion stays inline and avoids the full-screen TV celebration', async () => {
+test('Samsung TV completion stays inline and avoids the crash-prone full-screen celebration', async () => {
   const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
   const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
   const elements = createElementMap();
@@ -632,8 +632,10 @@ test('phone completion stays inline and avoids the full-screen TV celebration', 
       setItem: (key, value) => storage.set(key, value)
     },
     XMLHttpRequest: FakeXmlHttpRequest,
-    innerWidth: 390,
-    navigator: { userAgent: 'iPhone' },
+    innerWidth: 1280,
+    navigator: {
+      userAgent: 'Mozilla/5.0 (SMART-TV; Linux; Tizen 2.4.0) SamsungBrowser/1.1 TV Safari/538.1'
+    },
     setInterval() {},
     setTimeout() { return 1; },
     clearTimeout() {},
