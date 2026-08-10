@@ -1,5 +1,6 @@
 import QRCode from 'qrcode';
 import { getWhoopRedirectUri } from '../lib/whoop-oauth.js';
+import { normalizeWhoopProfile } from '../lib/whoop-token-store.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -7,8 +8,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const reconnectUrl = new URL('/api/whoop-connect', getWhoopRedirectUri()).toString();
-    const svg = await QRCode.toString(reconnectUrl, {
+    const profile = normalizeWhoopProfile(req.query?.profile);
+    const reconnectUrl = new URL('/api/whoop-connect', getWhoopRedirectUri());
+    reconnectUrl.searchParams.set('profile', profile);
+    const svg = await QRCode.toString(reconnectUrl.toString(), {
       type: 'svg',
       errorCorrectionLevel: 'M',
       margin: 1,

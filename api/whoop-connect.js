@@ -1,6 +1,10 @@
 import { randomBytes } from 'node:crypto';
 import { getWhoopRedirectUri } from '../lib/whoop-oauth.js';
-import { getWhoopTokenStore } from '../lib/whoop-token-store.js';
+import {
+  authorizationStateForProfile,
+  getWhoopTokenStore,
+  normalizeWhoopProfile,
+} from '../lib/whoop-token-store.js';
 
 const WHOOP_AUTH_URL = 'https://api.prod.whoop.com/oauth/oauth2/auth';
 const WHOOP_SCOPES = [
@@ -22,7 +26,17 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'WHOOP_CLIENT_ID is not configured.' });
   }
 
-  const state = randomBytes(24).toString('hex');
+  let profile;
+  try {
+    profile = normalizeWhoopProfile(req.query?.profile);
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+
+  const state = authorizationStateForProfile(
+    profile,
+    randomBytes(24).toString('hex'),
+  );
   const authorizationUrl = new URL(WHOOP_AUTH_URL);
   authorizationUrl.search = new URLSearchParams({
     response_type: 'code',
@@ -33,7 +47,7 @@ export default async function handler(req, res) {
   }).toString();
 
   try {
-    await getWhoopTokenStore().createAuthorizationState(state);
+    await getWhoopTokenStore(profile).createAuthorizationState(state);
   } catch (error) {
     return res.status(500).json({
       error: 'WHOOP authorization could not be started.',

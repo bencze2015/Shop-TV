@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  authorizationStateForProfile,
   createWhoopTokenStore,
   getRedisConfiguration,
+  normalizeWhoopProfile,
+  profileFromAuthorizationState,
   tokenRecordFromResponse,
 } from '../lib/whoop-token-store.js';
 
@@ -123,4 +126,42 @@ test('stores OAuth state for ten minutes and consumes it only once', async () =>
   assert.deepEqual(setOptions, { ex: 600 });
   assert.equal(await store.consumeAuthorizationState('random-state'), true);
   assert.equal(await store.consumeAuthorizationState('random-state'), false);
+});
+
+test('keeps Jordan and Kelsey token records isolated while migrating Jordan', async () => {
+  const values = new Map([
+    ['test:whoop', { accessToken: 'legacy-jordan', refreshToken: 'legacy-refresh' }],
+  ]);
+  const redis = {
+    get: async (key) => values.get(key) || null,
+    set: async (key, value) => values.set(key, value),
+    getdel: async (key) => {
+      const value = values.get(key) || null;
+      values.delete(key);
+      return value;
+    },
+  };
+  const jordan = createWhoopTokenStore(redis, 'test:whoop:jordan', 'test:whoop');
+  const kelsey = createWhoopTokenStore(redis, 'test:whoop:kelsey');
+
+  assert.equal((await jordan.get()).accessToken, 'legacy-jordan');
+  assert.equal(values.get('test:whoop:jordan').refreshToken, 'legacy-refresh');
+  assert.equal(await kelsey.get(), null);
+
+  await kelsey.save({
+    access_token: 'kelsey-access',
+    refresh_token: 'kelsey-refresh',
+    expires_in: 3600,
+  });
+  assert.equal((await jordan.get()).accessToken, 'legacy-jordan');
+  assert.equal((await kelsey.get()).accessToken, 'kelsey-access');
+});
+
+test('binds each OAuth state to a supported household profile', () => {
+  const state = authorizationStateForProfile('kelsey', 'random-state');
+  assert.equal(state, 'kelsey.random-state');
+  assert.equal(profileFromAuthorizationState(state), 'kelsey');
+  assert.equal(profileFromAuthorizationState('legacy-jordan-state'), 'jordan');
+  assert.equal(normalizeWhoopProfile(), 'jordan');
+  assert.throws(() => normalizeWhoopProfile('someone-else'), /Unknown WHOOP profile/);
 });

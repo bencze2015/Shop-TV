@@ -174,7 +174,7 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
   assert.equal(elements.whoop.className, 'whoop');
   assert.match(elements.whoop.innerHTML, /Recovery/);
   assert.match(elements.whoop.innerHTML, /80%/);
-  assert.equal(elements.whoopLive.textContent, 'WHOOP · JUST UPDATED');
+  assert.equal(elements.whoopLive.textContent, 'JORDAN WHOOP · JUST UPDATED');
   assert.match(elements.householdStatus.innerHTML, /Jordan<strong>Ready/);
   assert.match(elements.householdStatus.innerHTML, /Kelsey<strong>Ready/);
 
@@ -220,7 +220,8 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
   assert.match(elements.content.innerHTML, /HRV vs baseline/);
 
   assert.ok(requests.some((url) => url.startsWith('/workouts.json')));
-  assert.ok(requests.some((url) => url.startsWith('/api/whoop-data')));
+  assert.ok(requests.some((url) => url.includes('/api/whoop-data?profile=jordan')));
+  assert.ok(requests.some((url) => url.includes('/api/whoop-data?profile=kelsey')));
 });
 
 test('five-way remote navigation, timer persistence, auto-advance, and undo work together', async () => {
@@ -312,7 +313,7 @@ test('five-way remote navigation, timer persistence, auto-advance, and undo work
   assert.ok(intervals.length >= 3);
 });
 
-test('an eligible WHOOP strength workout automatically completes only Jordan’s plan', async () => {
+test('eligible WHOOP strength workouts automatically complete both household plans', async () => {
   const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
   const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
   const elements = createElementMap();
@@ -322,13 +323,14 @@ test('an eligible WHOOP strength workout automatically completes only Jordan’s
   class FakeXmlHttpRequest {
     open(_method, url) { this.url = url; }
     send() {
+      const target = this.url.includes('profile=kelsey') ? 'kelsey' : 'jordan';
       this.readyState = 4;
       this.status = 200;
       this.responseText = this.url.startsWith('/workouts.json')
         ? JSON.stringify(workouts)
         : JSON.stringify({
             workouts: [{
-              id: 'whoop-workout-1',
+              id: `${target}-whoop-workout-1`,
               sport_name: 'Weightlifting',
               start: '2026-08-10T10:15:00-07:00',
               end: '2026-08-10T11:00:00-07:00'
@@ -367,12 +369,70 @@ test('an eligible WHOOP strength workout automatically completes only Jordan’s
   const jordanKey = [...storage.keys()].find((key) => key.startsWith('shopWorkout:jordan:'));
   const jordanState = JSON.parse(storage.get(jordanKey));
   assert.equal(jordanState.completionSource, 'whoop');
-  assert.equal(jordanState.whoopWorkoutId, 'whoop-workout-1');
+  assert.equal(jordanState.whoopWorkoutId, 'jordan-whoop-workout-1');
+
+  const kelseyKey = [...storage.keys()].find((key) => key.startsWith('shopWorkout:kelsey:'));
+  const kelseyState = JSON.parse(storage.get(kelseyKey));
+  assert.equal(kelseyState.completionSource, 'whoop');
+  assert.equal(kelseyState.whoopWorkoutId, 'kelsey-whoop-workout-1');
+  assert.match(elements.householdStatus.innerHTML, /Jordan<strong>Done/);
+  assert.match(elements.householdStatus.innerHTML, /Kelsey<strong>Done/);
 
   context.dismissCelebration();
   context.setProfile('kelsey');
-  assert.match(elements.content.innerHTML, /READY WHEN YOU ARE/);
-  assert.equal([...storage.keys()].some((key) => key.startsWith('shopWorkout:kelsey:')), false);
+  assert.match(elements.content.innerHTML, /WORKOUT COMPLETE/);
+  assert.match(elements.content.innerHTML, /Confirmed by WHOOP · Weightlifting/);
+});
+
+test('an unconnected Kelsey profile shows a phone-only WHOOP connection QR code', async () => {
+  const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
+  const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
+  const elements = createElementMap();
+  const storage = new Map([['shopProfile', 'kelsey']]);
+  const TestDate = mutableDate('2026-08-10T12:00:00-07:00');
+
+  class FakeXmlHttpRequest {
+    open(_method, url) { this.url = url; }
+    send() {
+      this.readyState = 4;
+      if (this.url.startsWith('/workouts.json')) {
+        this.status = 200;
+        this.responseText = JSON.stringify(workouts);
+      } else if (this.url.includes('profile=kelsey')) {
+        this.status = 401;
+        this.responseText = JSON.stringify({ error: 'Kelsey WHOOP is not connected.' });
+      } else {
+        this.status = 200;
+        this.responseText = JSON.stringify({ workouts: [], trends: {} });
+      }
+      this.onreadystatechange();
+    }
+  }
+
+  const context = {
+    console,
+    document: {
+      getElementById: (id) => elements[id],
+      addEventListener() {}
+    },
+    history: { replaceState() {} },
+    location: { search: '', pathname: '/' },
+    localStorage: {
+      getItem: (key) => storage.get(key) || null,
+      setItem: (key, value) => storage.set(key, value)
+    },
+    XMLHttpRequest: FakeXmlHttpRequest,
+    setInterval() {},
+    setTimeout() { return 1; },
+    clearTimeout() {},
+    Date: TestDate
+  };
+  context.window = context;
+  vm.runInNewContext(source, context);
+
+  assert.equal(elements.whoopLive.textContent, 'KELSEY WHOOP · CONNECT');
+  assert.match(elements.whoop.innerHTML, /Connect Kelsey WHOOP from her phone/);
+  assert.match(elements.whoop.innerHTML, /\/api\/whoop-qr\?profile=kelsey/);
 });
 
 test('the unattended screen rolls to a fresh training day at 7 AM', async () => {
