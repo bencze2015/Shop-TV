@@ -18,6 +18,14 @@
     .welcome{margin-top:7px;font-size:34px;font-weight:760;letter-spacing:.045em;line-height:1}
     .dayline{margin-top:7px;color:#a5ada9;font-size:15px;font-weight:600}
     .toolbar{display:flex;align-items:center;justify-content:flex-end;padding-top:2px}
+    .household{display:flex;align-items:center;margin-right:14px;padding:4px;border:1px solid #222a27;border-radius:11px;background:#0b0f0e}
+    .household-label{padding:0 8px;color:#66706b;font-size:8px;font-weight:850;letter-spacing:.15em;text-transform:uppercase}
+    .household-person{min-width:92px;border-left:1px solid #222a27;padding:5px 9px;color:#aeb7b2;font-size:10px;font-weight:800;white-space:nowrap}
+    .household-person i{display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:#66706b;vertical-align:1px}
+    .household-person strong{margin-left:5px;color:#7f8984;font-size:8px;letter-spacing:.09em;text-transform:uppercase}
+    .household-person.done i{background:#a9ffcf;box-shadow:0 0 10px rgba(169,255,207,.28)}
+    .household-person.done strong{color:#a9ffcf}
+    .household-person.ready i{background:#e4ece7}
     .toolbar-group{display:flex;margin-left:10px;padding:3px;border:1px solid #222a27;border-radius:10px;background:#0b0f0e}
     .toolbar button{border:0;border-radius:7px;background:transparent;color:#76807b;padding:7px 10px;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
     .toolbar button.active{background:#e8eee9;color:#101411}
@@ -38,6 +46,9 @@
     .trend.down{color:#e17d84}
     .status{flex:0 0 82px;height:82px;margin-top:18px;display:flex;align-items:center;border-top:1px solid #202723;border-bottom:1px solid #202723;color:#8b9490;font-size:13px}
     .connect{margin-left:14px;border:1px solid #35413b;border-radius:8px;background:#111714;color:#dfe7e2;padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer}
+    .status-copy b{display:block;color:#dfe7e2;font-size:14px}
+    .status-copy span{display:block;margin-top:6px;color:#7f8984;font-size:11px}
+    .whoop-qr{width:68px;height:68px;margin-right:16px;border:5px solid #fff;border-radius:7px;background:#fff}
 
     .workspace{flex:1;min-height:0;margin-top:18px;overflow:hidden}
     .view{height:100%;min-height:0;display:flex;flex-direction:column}
@@ -211,6 +222,7 @@
       .screen{height:auto;min-height:100vh}
       .topbar,.training-layout,.ambient-layout,.rest-layout,.progress-layout{display:block}
       .toolbar{margin-top:16px;justify-content:flex-start;flex-wrap:wrap}
+      .household{width:100%;margin:0 0 8px}
       .toolbar-group{margin:8px 8px 0 0}
       .whoop{height:auto;flex-wrap:wrap}
       .metric{min-width:50%;border-bottom:1px solid #202723}
@@ -237,6 +249,7 @@
         <div class="dayline" id="date"></div>
       </div>
       <div class="toolbar">
+        <div class="household" id="householdStatus"></div>
         <div class="live"><i class="live-dot"></i><span id="whoopLive">WHOOP LIVE</span></div>
         <div class="clock" id="clock"></div>
         <div class="preview-chip" id="preview">Preview</div>

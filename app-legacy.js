@@ -3,6 +3,7 @@
   var weekOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   var TRAINING_DAY_START_HOUR = 7;
   var WHOOP_POLL_MS = 5 * 60 * 1000;
+  var WHOOP_RETRY_MS = 60 * 1000;
   var CELEBRATION_MS = 45 * 1000;
   var requestedDay = queryValue('preview') === '1' ? queryValue('day') : null;
   var selectedDay = requestedDay;
@@ -10,6 +11,8 @@
   var profileId = readStorage('shopProfile') || 'jordan';
   var profile = { name: 'Jordan', week: {} };
   var whoopData = null;
+  var whoopUpdatedAt = 0;
+  var whoopRetryTimeout = null;
   var view = 'today';
   var selectedExercise = 0;
   var focusZone = 'ambient';
@@ -26,7 +29,6 @@
   var celebrationTimeout = null;
   var celebrationVisible = false;
   var activeTrainingDateKey = null;
-  var WHOOP_AUTH = '/api/whoop-connect';
 
   var elements = {
     planName: byId('planName'),
@@ -34,6 +36,7 @@
     date: byId('date'),
     clock: byId('clock'),
     preview: byId('preview'),
+    householdStatus: byId('householdStatus'),
     jordanBtn: byId('jordanBtn'),
     kelseyBtn: byId('kelseyBtn'),
     whoopLive: byId('whoopLive'),
@@ -310,6 +313,10 @@
     return parseStoredJson(stateKey(), { sets: {}, completed: false });
   }
 
+  function profileState(id) {
+    return parseStoredJson('shopWorkout:' + id + ':' + todayKey(), { sets: {}, completed: false });
+  }
+
   function loadDisplayState() {
     return selectedDay === trainingDayName()
       ? loadState()
@@ -448,6 +455,35 @@
     var suffix = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12 || 12;
     elements.clock.textContent = hours + ':' + minutes + ' ' + suffix;
+    updateWhoopFreshness();
+  }
+
+  function householdPerson(id) {
+    var householdProfile = data.profiles[id];
+    var plan;
+    var state;
+    var status;
+    var className;
+    if (!householdProfile) return '';
+    plan = householdProfile.week && householdProfile.week[trainingDayName()];
+    state = profileState(id);
+    if (!plan || !plan.exercises || !plan.exercises.length) {
+      status = 'Rest';
+      className = 'rest';
+    } else if (state.completed) {
+      status = 'Done';
+      className = 'done';
+    } else {
+      status = 'Ready';
+      className = 'ready';
+    }
+    return '<span class="household-person ' + className + '"><i></i>' +
+      householdProfile.name + '<strong>' + status + '</strong></span>';
+  }
+
+  function renderHouseholdStatus() {
+    elements.householdStatus.innerHTML = '<span class="household-label">Today</span>' +
+      householdPerson('jordan') + householdPerson('kelsey');
   }
 
   function applyToolbarFocus() {
@@ -466,6 +502,7 @@
     setClass(elements.jordanBtn, 'active', profileId === 'jordan');
     setClass(elements.kelseyBtn, 'active', profileId === 'kelsey');
     setClass(elements.preview, 'visible', !isToday);
+    renderHouseholdStatus();
     applyToolbarFocus();
     elements.date.textContent = isToday
       ? currentTrainingDate.toLocaleDateString('en-US', {
@@ -1042,11 +1079,28 @@
     if (matching) completeWorkout('whoop', matching);
   }
 
+  function updateWhoopFreshness() {
+    var minutes;
+    if (profileId !== 'jordan' || !whoopUpdatedAt) return;
+    minutes = Math.max(0, Math.floor((new Date().getTime() - whoopUpdatedAt) / 60000));
+    elements.whoopLive.textContent = minutes < 1
+      ? 'WHOOP · JUST UPDATED'
+      : 'WHOOP · ' + minutes + 'M AGO';
+  }
+
+  function scheduleWhoopRetry() {
+    if (whoopRetryTimeout || !window.setTimeout) return;
+    whoopRetryTimeout = window.setTimeout(function () {
+      whoopRetryTimeout = null;
+      loadWhoop();
+    }, WHOOP_RETRY_MS);
+  }
+
   function loadWhoop() {
     if (profileId === 'kelsey') {
       elements.whoop.className = 'status';
       elements.whoop.innerHTML = 'Kelsey WHOOP is not connected yet. Workout tracking remains available.';
-      elements.whoopLive.textContent = 'WHOOP OFFLINE';
+      elements.whoopLive.textContent = 'KELSEY · NOT CONNECTED';
       return;
     }
     requestJson('/api/whoop-data?time=' + new Date().getTime(), function (error, response, status) {
@@ -1055,15 +1109,29 @@
       var sleep;
       var trends;
       if (error) {
-        elements.whoop.className = 'status';
-        elements.whoopLive.textContent = 'WHOOP OFFLINE';
-        elements.whoop.innerHTML = status === 401
-          ? 'WHOOP needs one authorization from a phone or computer.' +
-            '<button class="connect" onclick="location.href=\'' + WHOOP_AUTH + '\'">Connect WHOOP</button>'
-          : 'WHOOP data unavailable: ' + error;
+        scheduleWhoopRetry();
+        if (status === 401) {
+          whoopData = null;
+          whoopUpdatedAt = 0;
+          elements.whoop.className = 'status reconnect';
+          elements.whoopLive.textContent = 'WHOOP · RECONNECT';
+          elements.whoop.innerHTML = '<img class="whoop-qr" src="/api/whoop-qr" alt="WHOOP reconnect QR code">' +
+            '<div class="status-copy"><b>Reconnect WHOOP from your phone</b>' +
+            '<span>Scan this code once. The TV will recover automatically after authorization.</span></div>';
+        } else if (whoopData) {
+          elements.whoopLive.textContent = 'WHOOP · RETRYING';
+        } else {
+          elements.whoop.className = 'status';
+          elements.whoopLive.textContent = 'WHOOP · RETRYING';
+          elements.whoop.innerHTML = '<div class="status-copy"><b>WHOOP data is temporarily unavailable</b>' +
+            '<span>No action needed. Retrying automatically.</span></div>';
+        }
         return;
       }
+      if (whoopRetryTimeout && window.clearTimeout) window.clearTimeout(whoopRetryTimeout);
+      whoopRetryTimeout = null;
       whoopData = response;
+      whoopUpdatedAt = new Date().getTime();
       recovery = response.recovery && response.recovery.score ? response.recovery.score : {};
       cycle = response.cycle && response.cycle.score ? response.cycle.score : {};
       sleep = response.sleep && response.sleep.score ? response.sleep.score : {};
@@ -1075,7 +1143,7 @@
         metric('Resting HR', recovery.resting_heart_rate != null ? recovery.resting_heart_rate + ' bpm' : '—', trends.restingHr, 'rhr') +
         metric('Day Strain', cycle.strain != null ? Number(cycle.strain).toFixed(1) : '—', trends.strain) +
         metric('Sleep', sleep.sleep_performance_percentage != null ? sleep.sleep_performance_percentage + '%' : '—', trends.sleep);
-      elements.whoopLive.textContent = 'WHOOP LIVE';
+      updateWhoopFreshness();
       renderContent();
       applyWhoopWorkoutCompletion(response);
     });
