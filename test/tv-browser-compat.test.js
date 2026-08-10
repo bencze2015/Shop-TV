@@ -593,6 +593,64 @@ test('the TV applies live date exceptions without a refresh and keeps completion
   assert.doesNotMatch(elements.content.innerHTML, /WORKOUT COMPLETE/);
 });
 
+test('phone completion stays inline and avoids the full-screen TV celebration', async () => {
+  const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
+  const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
+  const elements = createElementMap();
+  const storage = new Map();
+  const TestDate = mutableDate('2026-08-10T12:00:00-07:00');
+
+  class FakeXmlHttpRequest {
+    open(_method, url) { this.url = url; }
+    send() {
+      this.readyState = 4;
+      this.status = 200;
+      if (this.url.startsWith('/workouts.json')) this.responseText = JSON.stringify(workouts);
+      else if (this.url.startsWith('/api/workout-plan')) {
+        this.responseText = JSON.stringify({
+          schemaVersion: 1,
+          revision: 0,
+          sharedSchedule: true,
+          profileWeeks: {},
+          dateOverrides: {}
+        });
+      } else this.responseText = JSON.stringify({ workouts: [], trends: {} });
+      this.onreadystatechange();
+    }
+  }
+
+  const context = {
+    console,
+    document: {
+      getElementById: (id) => elements[id],
+      addEventListener() {}
+    },
+    history: { replaceState() {} },
+    location: { search: '', pathname: '/' },
+    localStorage: {
+      getItem: (key) => storage.get(key) || null,
+      setItem: (key, value) => storage.set(key, value)
+    },
+    XMLHttpRequest: FakeXmlHttpRequest,
+    innerWidth: 390,
+    navigator: { userAgent: 'iPhone' },
+    setInterval() {},
+    setTimeout() { return 1; },
+    clearTimeout() {},
+    Date: TestDate
+  };
+  context.window = context;
+  vm.runInNewContext(source, context);
+
+  context.completeWorkout('manual');
+
+  assert.match(elements.content.innerHTML, /WORKOUT COMPLETE/);
+  assert.doesNotMatch(elements.celebration.className, /visible/);
+  assert.match(elements.toast.className, /visible/);
+  assert.equal(elements.toast.textContent, 'Push workout complete · Saved');
+  assert.equal(JSON.parse(storage.get('shopWorkout:jordan:2026-08-10')).completed, true);
+});
+
 function clonePlan(plan) {
   return JSON.parse(JSON.stringify(plan));
 }
