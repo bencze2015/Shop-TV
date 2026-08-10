@@ -11,8 +11,9 @@
   var profileId = readStorage('shopProfile') || 'jordan';
   var profile = { name: 'Jordan', week: {} };
   var whoopData = null;
-  var whoopUpdatedAt = 0;
-  var whoopRetryTimeout = null;
+  var whoopDataByProfile = { jordan: null, kelsey: null };
+  var whoopUpdatedAtByProfile = { jordan: 0, kelsey: 0 };
+  var whoopRetryTimeoutByProfile = { jordan: null, kelsey: null };
   var view = 'today';
   var selectedExercise = 0;
   var focusZone = 'ambient';
@@ -317,31 +318,43 @@
     return parseStoredJson('shopWorkout:' + id + ':' + todayKey(), { sets: {}, completed: false });
   }
 
+  function profilePlan(id, day) {
+    var target = data.profiles[id];
+    return target && target.week && target.week[day]
+      ? target.week[day]
+      : { name: 'Rest', exercises: [] };
+  }
+
   function loadDisplayState() {
     return selectedDay === trainingDayName()
       ? loadState()
       : { sets: {}, completed: false };
   }
 
-  function saveState(state) {
+  function saveProfileState(id, state) {
     var history;
     var plan;
     var found;
     var index;
-    writeStorage(stateKey(), JSON.stringify(state));
+    writeStorage('shopWorkout:' + id + ':' + todayKey(), JSON.stringify(state));
     if (state.completed) {
-      history = parseStoredJson(historyKey(), []);
+      history = parseStoredJson('shopHistory:' + id, []);
       found = false;
       for (index = 0; index < history.length; index += 1) {
         if (history[index].date === todayKey()) found = true;
       }
       if (!found) {
-        plan = planFor(trainingDayName());
+        plan = profilePlan(id, trainingDayName());
         history.unshift({ date: todayKey(), name: plan.name });
-        writeStorage(historyKey(), JSON.stringify(history.slice(0, 60)));
+        writeStorage('shopHistory:' + id, JSON.stringify(history.slice(0, 60)));
       }
     }
-    renderContent();
+    if (id === profileId) renderContent();
+    else renderHouseholdStatus();
+  }
+
+  function saveState(state) {
+    saveProfileState(profileId, state);
   }
 
   function planFor(day) {
@@ -443,9 +456,13 @@
     restoreUiState();
     focusZone = 'toolbar';
     toolbarIndex = id === 'jordan' ? 0 : 1;
-    whoopData = null;
+    whoopData = whoopDataByProfile[id];
+    elements.whoop.className = 'status';
+    elements.whoop.textContent = profile.name + ' WHOOP is updating…';
+    elements.whoopLive.textContent = profile.name.toUpperCase() + ' WHOOP · UPDATING';
     renderAll();
-    loadWhoop();
+    if (whoopData) renderWhoopMetrics(id, whoopData);
+    loadWhoop(id);
   }
 
   function updateClock() {
@@ -1057,16 +1074,16 @@
       end.getTime() <= new Date().getTime();
   }
 
-  function applyWhoopWorkoutCompletion(response) {
+  function applyWhoopWorkoutCompletion(targetProfileId, response) {
     var workouts;
     var plan;
     var state;
     var matching = null;
     var index;
-    if (profileId !== 'jordan' || selectedDay !== trainingDayName()) return;
-    plan = planFor(selectedDay);
+    var exercise;
+    plan = profilePlan(targetProfileId, trainingDayName());
     if (!plan.exercises || !plan.exercises.length) return;
-    state = loadState();
+    state = profileState(targetProfileId);
     if (state.completed) return;
     workouts = response && response.workouts ? response.workouts : [];
     for (index = 0; index < workouts.length; index += 1) {
@@ -1076,77 +1093,112 @@
         }
       }
     }
-    if (matching) completeWorkout('whoop', matching);
+    if (!matching) return;
+    if (!state.sets) state.sets = {};
+    for (index = 0; index < plan.exercises.length; index += 1) {
+      exercise = plan.exercises[index];
+      state.sets[exercise.id] = exercise.sets;
+    }
+    state.completed = true;
+    state.completionSource = 'whoop';
+    state.completedAt = new Date().toISOString();
+    state.whoopWorkoutId = matching.id || matching.uuid || null;
+    state.whoopSportName = matching.sport_name || matching.sport_id || '';
+    saveProfileState(targetProfileId, state);
+    if (targetProfileId === profileId && selectedDay === trainingDayName()) {
+      clearRestTimer();
+      lastAction = null;
+      trackingMode = 'ambient';
+      ambientAction = 0;
+      focusZone = 'ambient';
+      saveUiState();
+      showCelebration(plan, state);
+    }
   }
 
   function updateWhoopFreshness() {
     var minutes;
-    if (profileId !== 'jordan' || !whoopUpdatedAt) return;
-    minutes = Math.max(0, Math.floor((new Date().getTime() - whoopUpdatedAt) / 60000));
-    elements.whoopLive.textContent = minutes < 1
-      ? 'WHOOP · JUST UPDATED'
-      : 'WHOOP · ' + minutes + 'M AGO';
+    var updatedAt = whoopUpdatedAtByProfile[profileId];
+    if (!updatedAt) return;
+    minutes = Math.max(0, Math.floor((new Date().getTime() - updatedAt) / 60000));
+    elements.whoopLive.textContent = profile.name.toUpperCase() + ' WHOOP · ' +
+      (minutes < 1 ? 'JUST UPDATED' : minutes + 'M AGO');
   }
 
-  function scheduleWhoopRetry() {
-    if (whoopRetryTimeout || !window.setTimeout) return;
-    whoopRetryTimeout = window.setTimeout(function () {
-      whoopRetryTimeout = null;
-      loadWhoop();
+  function scheduleWhoopRetry(targetProfileId) {
+    if (whoopRetryTimeoutByProfile[targetProfileId] || !window.setTimeout) return;
+    whoopRetryTimeoutByProfile[targetProfileId] = window.setTimeout(function () {
+      whoopRetryTimeoutByProfile[targetProfileId] = null;
+      loadWhoop(targetProfileId);
     }, WHOOP_RETRY_MS);
   }
 
-  function loadWhoop() {
-    if (profileId === 'kelsey') {
-      elements.whoop.className = 'status';
-      elements.whoop.innerHTML = 'Kelsey WHOOP is not connected yet. Workout tracking remains available.';
-      elements.whoopLive.textContent = 'KELSEY · NOT CONNECTED';
-      return;
-    }
-    requestJson('/api/whoop-data?time=' + new Date().getTime(), function (error, response, status) {
-      var recovery;
-      var cycle;
-      var sleep;
-      var trends;
+  function renderWhoopMetrics(targetProfileId, response) {
+    var recovery;
+    var cycle;
+    var sleep;
+    var trends;
+    if (targetProfileId !== profileId) return;
+    whoopData = response;
+    recovery = response.recovery && response.recovery.score ? response.recovery.score : {};
+    cycle = response.cycle && response.cycle.score ? response.cycle.score : {};
+    sleep = response.sleep && response.sleep.score ? response.sleep.score : {};
+    trends = response.trends || {};
+    elements.whoop.className = 'whoop';
+    elements.whoop.innerHTML =
+      metric('Recovery', recovery.recovery_score != null ? recovery.recovery_score + '%' : '—', trends.recovery) +
+      metric('HRV', recovery.hrv_rmssd_milli != null ? Math.round(recovery.hrv_rmssd_milli) + ' ms' : '—', trends.hrv) +
+      metric('Resting HR', recovery.resting_heart_rate != null ? recovery.resting_heart_rate + ' bpm' : '—', trends.restingHr, 'rhr') +
+      metric('Day Strain', cycle.strain != null ? Number(cycle.strain).toFixed(1) : '—', trends.strain) +
+      metric('Sleep', sleep.sleep_performance_percentage != null ? sleep.sleep_performance_percentage + '%' : '—', trends.sleep);
+    updateWhoopFreshness();
+    renderContent();
+  }
+
+  function loadWhoop(targetProfileId) {
+    var target = targetProfileId || profileId;
+    var targetName = data.profiles[target] ? data.profiles[target].name : target;
+    requestJson('/api/whoop-data?profile=' + encodeURIComponent(target) +
+      '&time=' + new Date().getTime(), function (error, response, status) {
       if (error) {
-        scheduleWhoopRetry();
+        scheduleWhoopRetry(target);
+        if (target !== profileId) return;
         if (status === 401) {
           whoopData = null;
-          whoopUpdatedAt = 0;
+          whoopDataByProfile[target] = null;
+          whoopUpdatedAtByProfile[target] = 0;
           elements.whoop.className = 'status reconnect';
-          elements.whoopLive.textContent = 'WHOOP · RECONNECT';
-          elements.whoop.innerHTML = '<img class="whoop-qr" src="/api/whoop-qr" alt="WHOOP reconnect QR code">' +
-            '<div class="status-copy"><b>Reconnect WHOOP from your phone</b>' +
-            '<span>Scan this code once. The TV will recover automatically after authorization.</span></div>';
+          elements.whoopLive.textContent = targetName.toUpperCase() + ' WHOOP · CONNECT';
+          elements.whoop.innerHTML = '<img class="whoop-qr" src="/api/whoop-qr?profile=' + target +
+            '" alt="' + targetName + ' WHOOP connection QR code">' +
+            '<div class="status-copy"><b>Connect ' + targetName + ' WHOOP from ' +
+            (target === 'kelsey' ? 'her' : 'your') + ' phone</b>' +
+            '<span>Scan once and approve WHOOP. The TV will update automatically.</span></div>';
         } else if (whoopData) {
-          elements.whoopLive.textContent = 'WHOOP · RETRYING';
+          elements.whoopLive.textContent = targetName.toUpperCase() + ' WHOOP · RETRYING';
         } else {
           elements.whoop.className = 'status';
-          elements.whoopLive.textContent = 'WHOOP · RETRYING';
-          elements.whoop.innerHTML = '<div class="status-copy"><b>WHOOP data is temporarily unavailable</b>' +
+          elements.whoopLive.textContent = targetName.toUpperCase() + ' WHOOP · RETRYING';
+          elements.whoop.innerHTML = '<div class="status-copy"><b>' + targetName +
+            ' WHOOP is temporarily unavailable</b>' +
             '<span>No action needed. Retrying automatically.</span></div>';
         }
         return;
       }
-      if (whoopRetryTimeout && window.clearTimeout) window.clearTimeout(whoopRetryTimeout);
-      whoopRetryTimeout = null;
-      whoopData = response;
-      whoopUpdatedAt = new Date().getTime();
-      recovery = response.recovery && response.recovery.score ? response.recovery.score : {};
-      cycle = response.cycle && response.cycle.score ? response.cycle.score : {};
-      sleep = response.sleep && response.sleep.score ? response.sleep.score : {};
-      trends = response.trends || {};
-      elements.whoop.className = 'whoop';
-      elements.whoop.innerHTML =
-        metric('Recovery', recovery.recovery_score != null ? recovery.recovery_score + '%' : '—', trends.recovery) +
-        metric('HRV', recovery.hrv_rmssd_milli != null ? Math.round(recovery.hrv_rmssd_milli) + ' ms' : '—', trends.hrv) +
-        metric('Resting HR', recovery.resting_heart_rate != null ? recovery.resting_heart_rate + ' bpm' : '—', trends.restingHr, 'rhr') +
-        metric('Day Strain', cycle.strain != null ? Number(cycle.strain).toFixed(1) : '—', trends.strain) +
-        metric('Sleep', sleep.sleep_performance_percentage != null ? sleep.sleep_performance_percentage + '%' : '—', trends.sleep);
-      updateWhoopFreshness();
-      renderContent();
-      applyWhoopWorkoutCompletion(response);
+      if (whoopRetryTimeoutByProfile[target] && window.clearTimeout) {
+        window.clearTimeout(whoopRetryTimeoutByProfile[target]);
+      }
+      whoopRetryTimeoutByProfile[target] = null;
+      whoopDataByProfile[target] = response;
+      whoopUpdatedAtByProfile[target] = new Date().getTime();
+      renderWhoopMetrics(target, response);
+      applyWhoopWorkoutCompletion(target, response);
     });
+  }
+
+  function loadAllWhoop() {
+    loadWhoop('jordan');
+    loadWhoop('kelsey');
   }
 
   function setView(newView) {
@@ -1240,7 +1292,7 @@
     updateDayUrl(null);
     saveUiState();
     renderAll();
-    loadWhoop();
+    loadAllWhoop();
   }
 
   function init() {
@@ -1269,8 +1321,8 @@
       }
       renderAll();
       updateRestTimer();
-      loadWhoop();
-      window.setInterval(loadWhoop, WHOOP_POLL_MS);
+      loadAllWhoop();
+      window.setInterval(loadAllWhoop, WHOOP_POLL_MS);
       window.setInterval(updateClock, 30 * 1000);
       window.setInterval(checkTrainingDayReset, 30 * 1000);
       window.setInterval(updateRestTimer, 1000);

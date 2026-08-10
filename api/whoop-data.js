@@ -1,5 +1,8 @@
 import { loadWhoopData, refreshWhoopTokens } from '../lib/whoop-api.js';
-import { getWhoopTokenStore } from '../lib/whoop-token-store.js';
+import {
+  getWhoopTokenStore,
+  normalizeWhoopProfile,
+} from '../lib/whoop-token-store.js';
 
 const REFRESH_EARLY_MS = 60 * 1000;
 
@@ -39,10 +42,17 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  let profile;
+  try {
+    profile = normalizeWhoopProfile(req.query?.profile);
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+
   let store;
   let tokens;
   try {
-    store = getWhoopTokenStore();
+    store = getWhoopTokenStore(profile);
     tokens = await store.get();
   } catch (error) {
     return res.status(500).json({
@@ -73,7 +83,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    return res.status(200).json(await loadWhoopData(tokens.accessToken));
+    return res.status(200).json({
+      ...(await loadWhoopData(tokens.accessToken)),
+      profile,
+    });
   } catch (error) {
     if (error.status !== 401 || !tokens.refreshToken) {
       return res.status(error.status || 500).json({
@@ -84,7 +97,10 @@ export default async function handler(req, res) {
 
     try {
       tokens = await refreshAndStore(store, tokens);
-      return res.status(200).json(await loadWhoopData(tokens.accessToken));
+      return res.status(200).json({
+        ...(await loadWhoopData(tokens.accessToken)),
+        profile,
+      });
     } catch (refreshError) {
       if (refreshError.status === 400 || refreshError.status === 401) {
         return authorizationError(res, refreshError.data || null);

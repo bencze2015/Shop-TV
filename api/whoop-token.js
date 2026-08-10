@@ -1,6 +1,9 @@
 import { exchangeAuthorizationCode } from '../lib/whoop-api.js';
 import { getWhoopRedirectUri } from '../lib/whoop-oauth.js';
-import { getWhoopTokenStore } from '../lib/whoop-token-store.js';
+import {
+  getWhoopTokenStore,
+  profileFromAuthorizationState,
+} from '../lib/whoop-token-store.js';
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -14,7 +17,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const store = getWhoopTokenStore();
+    const profile = profileFromAuthorizationState(state);
+    const store = getWhoopTokenStore(profile);
     if (!(await store.consumeAuthorizationState(state))) {
       return res.status(400).json({
         error: 'The WHOOP authorization session is invalid or expired. Start the connection again.',
@@ -27,6 +31,7 @@ export default async function handler(req, res) {
     await store.save(data);
     return res.status(200).json({
       connected: true,
+      profile,
       stored_server_side: true,
       expires_in: data.expires_in || null,
       scope: data.scope || null,
