@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b0e0d">
+  <title>Workout Manager</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b0e0d;--panel:#121715;--panel2:#171d1a;--line:#28312d;--muted:#89938e;--ink:#f5f7f5;--mint:#a9ffcf;--danger:#ff9b9b}
+    *{box-sizing:border-box}
+    html{background:var(--bg)}
+    body{margin:0;background:radial-gradient(circle at 80% -10%,#1e2c25 0,var(--bg) 36%);color:var(--ink);font-family:Arial,"Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased}
+    button,input,select{font:inherit}
+    button{touch-action:manipulation}
+    .shell{width:min(760px,100%);margin:0 auto;padding:max(22px,env(safe-area-inset-top)) 18px max(42px,env(safe-area-inset-bottom))}
+    .top{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
+    .eyebrow{color:var(--mint);font-size:10px;font-weight:850;letter-spacing:.18em;text-transform:uppercase}
+    h1{margin:7px 0 0;font-size:32px;letter-spacing:-.045em}
+    .sync{color:var(--muted);font-size:11px;text-align:right}
+    .sync b{display:block;margin-bottom:5px;color:var(--mint);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+    .card{margin-top:14px;border:1px solid var(--line);border-radius:20px;background:rgba(18,23,21,.94);padding:18px;box-shadow:0 16px 45px rgba(0,0,0,.18)}
+    .section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+    h2{margin:0;font-size:19px;letter-spacing:-.02em}
+    .sub{margin:6px 0 0;color:var(--muted);font-size:12px;line-height:1.45}
+    .segments{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:14px;padding:4px;border:1px solid var(--line);border-radius:13px;background:#0d110f}
+    .segments button{min-height:42px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-size:12px;font-weight:800}
+    .segments button.active{background:#edf5f0;color:#101411}
+    .quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:15px}
+    .action{min-height:64px;border:1px solid #344039;border-radius:14px;background:var(--panel2);color:var(--ink);padding:12px 14px;text-align:left;font-size:13px;font-weight:800}
+    .action span{display:block;margin-top:5px;color:var(--muted);font-size:10px;font-weight:600;line-height:1.3}
+    .action.primary{border-color:var(--mint);background:var(--mint);color:#0c120f}
+    .action.primary span{color:#3c5c4b}
+    .action.wide{grid-column:1/-1}
+    .toggle-row{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:15px;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:#0e1210}
+    .toggle-row strong{display:block;font-size:13px}
+    .toggle-row span{display:block;margin-top:4px;color:var(--muted);font-size:10px}
+    .switch{position:relative;flex:0 0 48px;height:28px;border:0;border-radius:999px;background:#333b37;padding:0}
+    .switch:after{content:"";position:absolute;left:4px;top:4px;width:20px;height:20px;border-radius:50%;background:#dbe1de;transition:.18s}
+    .switch.on{background:var(--mint)}
+    .switch.on:after{left:24px;background:#102017}
+    .week{display:grid;gap:7px;margin-top:15px}
+    .day-row{display:grid;grid-template-columns:90px 1fr;align-items:center;gap:10px}
+    .day-row label{color:#cfd5d1;font-size:12px;font-weight:800}
+    select,input{width:100%;min-height:44px;border:1px solid #323c37;border-radius:11px;outline:0;background:#0d1210;color:var(--ink);padding:0 12px}
+    select:focus,input:focus{border-color:var(--mint)}
+    .editor-tabs{display:flex;gap:7px;margin-top:15px;overflow:auto;padding-bottom:2px}
+    .chip{flex:0 0 auto;min-height:38px;border:1px solid var(--line);border-radius:999px;background:#0e1210;color:var(--muted);padding:0 14px;font-size:11px;font-weight:800}
+    .chip.active{border-color:#6f8b7d;color:var(--ink);background:#1a231f}
+    .exercise-list{display:grid;gap:8px;margin-top:12px}
+    .exercise{border:1px solid var(--line);border-radius:14px;background:#0e1210;padding:12px}
+    .exercise-top{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:8px}
+    .grip{color:#65706a;font-size:14px}
+    .remove{width:36px;height:36px;border:0;border-radius:9px;background:#231919;color:var(--danger);font-size:20px}
+    .fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:9px}
+    .fields label{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+    .fields input{min-height:38px;margin-top:5px;padding:0 9px}
+    .move-row{display:flex;gap:7px;margin-top:8px}
+    .mini{min-height:34px;border:1px solid var(--line);border-radius:9px;background:#171d1a;color:#b9c2bd;padding:0 12px;font-size:11px;font-weight:800}
+    .footer-actions{display:flex;gap:8px;margin-top:12px}
+    .save,.add{min-height:46px;border-radius:12px;font-size:12px;font-weight:850}
+    .save{flex:1;border:0;background:var(--mint);color:#0d130f}
+    .add{border:1px solid var(--line);background:#171d1a;color:var(--ink);padding:0 15px}
+    .exception-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:8px;margin-top:14px}
+    .exception-grid .save{grid-column:1/-1}
+    .exceptions{margin-top:12px}
+    .exception-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:11px}
+    .exception-row span{color:var(--muted)}
+    .exception-row button{border:0;background:transparent;color:var(--danger);font-size:11px;font-weight:800}
+    .lock{display:none;width:min(430px,calc(100% - 36px));margin:18vh auto 0;border:1px solid var(--line);border-radius:22px;background:var(--panel);padding:22px}
+    .lock h1{font-size:26px}
+    .lock input{margin-top:15px}
+    .lock button{width:100%;min-height:48px;margin-top:9px;border:0;border-radius:12px;background:var(--mint);color:#0d130f;font-weight:850}
+    .error{min-height:16px;margin-top:9px;color:var(--danger);font-size:11px}
+    .toast{position:fixed;z-index:10;left:50%;bottom:max(18px,env(safe-area-inset-bottom));display:none;width:max-content;max-width:calc(100% - 36px);transform:translateX(-50%);border:1px solid #53675d;border-radius:999px;background:#17201c;color:#e9f2ed;padding:11px 16px;font-size:11px;font-weight:800;box-shadow:0 12px 40px #000}
+    .toast.show{display:block}
+    .loading{padding:70px 0;color:var(--muted);text-align:center}
+    @media(max-width:520px){.shell{padding-left:13px;padding-right:13px}.quick-grid{grid-template-columns:1fr}.action.wide{grid-column:auto}.card{padding:15px}.day-row{grid-template-columns:76px 1fr}.fields{grid-template-columns:repeat(3,1fr)}h1{font-size:28px}.sync{font-size:9px}}
+  </style>
+</head>
+<body>
+  <main id="app" class="shell"><div class="loading">Loading Workout Manager…</div></main>
+  <section id="lock" class="lock">
+    <div class="eyebrow">Private control</div>
+    <h1>Unlock Workout Manager</h1>
+    <p class="sub">Open the private setup link once on this phone, or paste its access key below.</p>
+    <input id="tokenInput" type="password" autocomplete="current-password" placeholder="Access key">
+    <button id="unlockButton">Unlock</button>
+    <div id="lockError" class="error"></div>
+  </section>
+  <div id="toast" class="toast"></div>
+  <script src="/manager.js"></script>
+</body>
+</html>

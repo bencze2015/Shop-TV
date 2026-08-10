@@ -3,11 +3,14 @@
   var weekOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   var TRAINING_DAY_START_HOUR = 7;
   var WHOOP_POLL_MS = 5 * 60 * 1000;
+  var PLAN_POLL_MS = 30 * 1000;
   var WHOOP_RETRY_MS = 60 * 1000;
   var CELEBRATION_MS = 45 * 1000;
   var requestedDay = queryValue('preview') === '1' ? queryValue('day') : null;
   var selectedDay = requestedDay;
   var data = { profiles: {} };
+  var baseData = { profiles: {} };
+  var livePlanRevision = -1;
   var profileId = readStorage('shopProfile') || 'jordan';
   var profile = { name: 'Jordan', week: {} };
   var whoopData = null;
@@ -109,6 +112,81 @@
 
   function todayKey() {
     return dateKey(trainingDate());
+  }
+
+  function cloneJson(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function dateFromKey(key) {
+    var parts = String(key || '').split('-');
+    if (parts.length !== 3) return null;
+    return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 12, 0, 0, 0);
+  }
+
+  function addDateDays(date, amount) {
+    var result = new Date(date.getTime());
+    result.setDate(result.getDate() + amount);
+    return result;
+  }
+
+  function applyWorkoutPlanConfig(config) {
+    var current;
+    var monday;
+    var sunday;
+    var overrides;
+    var keys;
+    var index;
+    var key;
+    var overrideDate;
+    var entry;
+    var targetProfileId;
+    var day;
+    if (!baseData.profiles || !config || config.schemaVersion !== 1) return;
+    data = cloneJson(baseData);
+    if (config.profileWeeks) {
+      for (targetProfileId in config.profileWeeks) {
+        if (config.profileWeeks.hasOwnProperty(targetProfileId) && data.profiles[targetProfileId]) {
+          data.profiles[targetProfileId].week = cloneJson(config.profileWeeks[targetProfileId]);
+        }
+      }
+    }
+    current = trainingDate();
+    current.setHours(12, 0, 0, 0);
+    monday = addDateDays(current, -((current.getDay() + 6) % 7));
+    sunday = addDateDays(monday, 6);
+    overrides = config.dateOverrides || {};
+    keys = Object.keys(overrides);
+    for (index = 0; index < keys.length; index += 1) {
+      key = keys[index];
+      overrideDate = dateFromKey(key);
+      if (!overrideDate || overrideDate.getTime() < monday.getTime() || overrideDate.getTime() > sunday.getTime()) continue;
+      entry = overrides[key] || {};
+      day = days[overrideDate.getDay()];
+      for (targetProfileId in entry) {
+        if (entry.hasOwnProperty(targetProfileId) && data.profiles[targetProfileId]) {
+          data.profiles[targetProfileId].week[day] = cloneJson(entry[targetProfileId]);
+        }
+      }
+    }
+    if (!data.profiles[profileId]) profileId = 'jordan';
+    profile = data.profiles[profileId];
+    if (selectedExercise >= (planFor(selectedDay).exercises || []).length) selectedExercise = 0;
+    renderAll();
+    for (targetProfileId in whoopDataByProfile) {
+      if (whoopDataByProfile.hasOwnProperty(targetProfileId) && whoopDataByProfile[targetProfileId]) {
+        applyWhoopWorkoutCompletion(targetProfileId, whoopDataByProfile[targetProfileId]);
+      }
+    }
+  }
+
+  function loadWorkoutPlan() {
+    requestJson('/api/workout-plan?time=' + new Date().getTime(), function (error, response) {
+      if (error || !response || response.schemaVersion !== 1) return;
+      if (response.revision === livePlanRevision) return;
+      livePlanRevision = response.revision;
+      applyWorkoutPlanConfig(response);
+    });
   }
 
   function stateKey() {
@@ -310,12 +388,26 @@
     }
   }
 
+  function stateForPlan(state, plan) {
+    if (state.completed && state.planName && plan && state.planName !== plan.name) {
+      return { sets: {}, completed: false };
+    }
+    if (!state.sets) state.sets = {};
+    return state;
+  }
+
   function loadState() {
-    return parseStoredJson(stateKey(), { sets: {}, completed: false });
+    return stateForPlan(
+      parseStoredJson(stateKey(), { sets: {}, completed: false }),
+      profilePlan(profileId, trainingDayName())
+    );
   }
 
   function profileState(id) {
-    return parseStoredJson('shopWorkout:' + id + ':' + todayKey(), { sets: {}, completed: false });
+    return stateForPlan(
+      parseStoredJson('shopWorkout:' + id + ':' + todayKey(), { sets: {}, completed: false }),
+      profilePlan(id, trainingDayName())
+    );
   }
 
   function profilePlan(id, day) {
@@ -336,6 +428,8 @@
     var plan;
     var found;
     var index;
+    plan = profilePlan(id, trainingDayName());
+    if (state.completed) state.planName = plan.name;
     writeStorage('shopWorkout:' + id + ':' + todayKey(), JSON.stringify(state));
     if (state.completed) {
       history = parseStoredJson('shopHistory:' + id, []);
@@ -344,7 +438,6 @@
         if (history[index].date === todayKey()) found = true;
       }
       if (!found) {
-        plan = profilePlan(id, trainingDayName());
         history.unshift({ date: todayKey(), name: plan.name });
         writeStorage('shopHistory:' + id, JSON.stringify(history.slice(0, 60)));
       }
@@ -866,6 +959,7 @@
       state.sets[exercise.id] = exercise.sets;
     }
     state.completed = true;
+    state.planName = plan.name;
     state.completionSource = source || 'manual';
     state.completedAt = new Date().toISOString();
     if (workout) {
@@ -942,6 +1036,7 @@
     }
     state.completed = complete;
     if (complete) {
+      state.planName = plan.name;
       state.completionSource = 'sets';
       state.completedAt = new Date().toISOString();
     }
@@ -1100,6 +1195,7 @@
       state.sets[exercise.id] = exercise.sets;
     }
     state.completed = true;
+    state.planName = plan.name;
     state.completionSource = 'whoop';
     state.completedAt = new Date().toISOString();
     state.whoopWorkoutId = matching.id || matching.uuid || null;
@@ -1292,6 +1388,8 @@
     updateDayUrl(null);
     saveUiState();
     renderAll();
+    livePlanRevision = -1;
+    loadWorkoutPlan();
     loadAllWhoop();
   }
 
@@ -1303,7 +1401,8 @@
         elements.content.textContent = 'Workout program unavailable: ' + error;
         return;
       }
-      data = response;
+      baseData = response;
+      data = cloneJson(baseData);
       if (!data.profiles || !data.profiles[profileId]) profileId = 'jordan';
       profile = data.profiles[profileId];
       activeTrainingDateKey = todayKey();
@@ -1320,9 +1419,11 @@
         focusZone = trackingMode === 'sets' ? 'workout' : 'ambient';
       }
       renderAll();
+      loadWorkoutPlan();
       updateRestTimer();
       loadAllWhoop();
       window.setInterval(loadAllWhoop, WHOOP_POLL_MS);
+      window.setInterval(loadWorkoutPlan, PLAN_POLL_MS);
       window.setInterval(updateClock, 30 * 1000);
       window.setInterval(checkTrainingDayReset, 30 * 1000);
       window.setInterval(updateRestTimer, 1000);
@@ -1342,6 +1443,7 @@
   window.dismissCelebration = dismissCelebration;
   window.undoLastSet = undoLastSet;
   window.selectExercise = selectExercise;
+  window.loadWorkoutPlan = loadWorkoutPlan;
 
   function isBackKey(event) {
     return event.key === 'Escape' || event.key === 'Backspace' ||

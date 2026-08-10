@@ -220,6 +220,7 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
   assert.match(elements.content.innerHTML, /HRV vs baseline/);
 
   assert.ok(requests.some((url) => url.startsWith('/workouts.json')));
+  assert.ok(requests.some((url) => url.startsWith('/api/workout-plan')));
   assert.ok(requests.some((url) => url.includes('/api/whoop-data?profile=jordan')));
   assert.ok(requests.some((url) => url.includes('/api/whoop-data?profile=kelsey')));
 });
@@ -523,3 +524,75 @@ test('all seven day previews render without overflowing the exercise budget', as
     );
   }
 });
+
+test('the TV applies live date exceptions without a refresh and keeps completion attached to its plan', async () => {
+  const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
+  const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
+  const elements = createElementMap();
+  const storage = new Map();
+  const TestDate = mutableDate('2026-08-10T12:00:00-07:00');
+  let liveConfig = {
+    schemaVersion: 1,
+    revision: 0,
+    updatedAt: null,
+    sharedSchedule: true,
+    profileWeeks: {},
+    dateOverrides: {}
+  };
+
+  class FakeXmlHttpRequest {
+    open(_method, url) { this.url = url; }
+    send() {
+      this.readyState = 4;
+      this.status = 200;
+      if (this.url.startsWith('/workouts.json')) this.responseText = JSON.stringify(workouts);
+      else if (this.url.startsWith('/api/workout-plan')) this.responseText = JSON.stringify(liveConfig);
+      else this.responseText = JSON.stringify({ workouts: [], trends: {} });
+      this.onreadystatechange();
+    }
+  }
+
+  const context = {
+    console,
+    document: {
+      getElementById: (id) => elements[id],
+      addEventListener() {}
+    },
+    history: { replaceState() {} },
+    location: { search: '', pathname: '/' },
+    localStorage: {
+      getItem: (key) => storage.get(key) || null,
+      setItem: (key, value) => storage.set(key, value)
+    },
+    XMLHttpRequest: FakeXmlHttpRequest,
+    setInterval() {},
+    setTimeout() { return 1; },
+    clearTimeout() {},
+    Date: TestDate
+  };
+  context.window = context;
+  vm.runInNewContext(source, context);
+
+  assert.match(elements.content.innerHTML, /PUSH DAY/);
+  context.completeWorkout('manual');
+  assert.equal(JSON.parse(storage.get('shopWorkout:jordan:2026-08-10')).planName, 'Push');
+
+  liveConfig = {
+    ...liveConfig,
+    revision: 1,
+    dateOverrides: {
+      '2026-08-10': {
+        jordan: clonePlan(workouts.profiles.jordan.week.Wednesday)
+      }
+    }
+  };
+  context.loadWorkoutPlan();
+
+  assert.match(elements.content.innerHTML, /PULL DAY/);
+  assert.match(elements.content.innerHTML, /READY WHEN YOU ARE/);
+  assert.doesNotMatch(elements.content.innerHTML, /WORKOUT COMPLETE/);
+});
+
+function clonePlan(plan) {
+  return JSON.parse(JSON.stringify(plan));
+}
