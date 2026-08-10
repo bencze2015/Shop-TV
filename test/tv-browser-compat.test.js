@@ -5,7 +5,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const elementIds = [
-  'planName', 'hello', 'date', 'clock', 'preview', 'jordanBtn', 'kelseyBtn',
+  'planName', 'hello', 'date', 'clock', 'preview', 'householdStatus', 'jordanBtn', 'kelseyBtn',
   'whoopLive', 'todayTab', 'progressTab', 'whoop', 'content', 'controlHint', 'toast',
   'celebration', 'celebrationSource', 'celebrationTitle', 'celebrationMeta'
 ];
@@ -174,6 +174,9 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
   assert.equal(elements.whoop.className, 'whoop');
   assert.match(elements.whoop.innerHTML, /Recovery/);
   assert.match(elements.whoop.innerHTML, /80%/);
+  assert.equal(elements.whoopLive.textContent, 'WHOOP · JUST UPDATED');
+  assert.match(elements.householdStatus.innerHTML, /Jordan<strong>Ready/);
+  assert.match(elements.householdStatus.innerHTML, /Kelsey<strong>Ready/);
 
   assert.match(elements.content.innerHTML, /PUSH DAY/);
   assert.match(elements.content.innerHTML, /READY WHEN YOU ARE/);
@@ -198,6 +201,8 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
   assert.match(elements.content.innerHTML, /Marked complete on this screen/);
   assert.match(elements.celebration.className, /visible/);
   assert.equal(elements.celebrationTitle.textContent, 'PUSH COMPLETE');
+  assert.match(elements.householdStatus.innerHTML, /Jordan<strong>Done/);
+  assert.match(elements.householdStatus.innerHTML, /Kelsey<strong>Ready/);
   context.dismissCelebration();
   context.setProfile('kelsey');
   assert.match(elements.content.innerHTML, /READY WHEN YOU ARE/);

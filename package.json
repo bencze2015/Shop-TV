@@ -7,7 +7,8 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@upstash/redis": "^1.35.3"
+    "@upstash/redis": "^1.35.3",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "acorn": "^8.18.0"
