@@ -926,8 +926,19 @@
     celebrationTimeout = null;
   }
 
+  function compactCompletionMode() {
+    var userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
+    return !!(window.innerWidth && window.innerWidth <= 900) ||
+      /iPhone|iPad|iPod|Android/i.test(userAgent);
+  }
+
   function showCelebration(plan, state) {
     var summary = sessionSummary(plan);
+    if (compactCompletionMode()) {
+      dismissCelebration();
+      showToast(plan.name + ' workout complete · Saved');
+      return;
+    }
     elements.celebrationSource.textContent = state.completionSource === 'whoop'
       ? 'Confirmed automatically by WHOOP'
       : 'Workout complete';
@@ -971,11 +982,20 @@
     trackingMode = 'ambient';
     ambientAction = 0;
     focusZone = 'ambient';
-    unlockAudio();
-    requestWakeLock();
+    if (!compactCompletionMode()) {
+      unlockAudio();
+      requestWakeLock();
+    }
     saveUiState();
     saveState(state);
-    if (!wasComplete) showCelebration(plan, state);
+    if (!wasComplete) {
+      try {
+        showCelebration(plan, state);
+      } catch (celebrationError) {
+        dismissCelebration();
+        showToast(plan.name + ' workout complete · Saved');
+      }
+    }
     return !wasComplete;
   }
 
@@ -1020,8 +1040,10 @@
     state = loadState();
     previousDone = state.sets[exercise.id] || 0;
     if (previousDone >= exercise.sets) return;
-    unlockAudio();
-    requestWakeLock();
+    if (!compactCompletionMode()) {
+      unlockAudio();
+      requestWakeLock();
+    }
     lastAction = {
       exerciseId: exercise.id,
       previousDone: previousDone,
