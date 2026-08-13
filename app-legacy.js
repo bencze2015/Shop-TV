@@ -1380,6 +1380,7 @@
     var monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'];
     elements.hello.textContent = 'HOUSEHOLD PROGRESS';
+    setClass(elements.hello, 'progress-welcome', true);
     elements.planName.textContent = 'SHARED';
     elements.date.textContent = monthNames[now.getMonth()] + ' ' + now.getFullYear();
     elements.whoopLive.textContent = 'HOUSEHOLD WHOOP · LIVE';
@@ -1407,9 +1408,9 @@
       stats.percent + '%</strong></div></div>' +
       '<div class="person-streak"><span>Current streak</span><strong>' + stats.streak +
       '</strong><small>session' + (stats.streak === 1 ? '' : 's') + '</small></div>' +
-      '<div class="person-steps"><div class="person-steps-head"><div><span>Steps today</span><strong>' +
-      formatStepCount(dailySteps ? dailySteps.steps : null) + '</strong></div><small>' +
-      formatStepCount(dailySteps ? dailySteps.goal : sharedStepGoal) + ' goal</small></div>' +
+      '<div class="person-steps ' + (dailySteps ? '' : 'unavailable') + '"><div class="person-steps-head"><div><span>Steps today</span><strong>' +
+      (dailySteps ? formatStepCount(dailySteps.steps) : 'NOT CONNECTED') + '</strong></div><small>' +
+      (dailySteps ? formatStepCount(dailySteps.goal) + ' goal' : 'iPhone sync') + '</small></div>' +
       '<div class="step-track"><i style="width:' + stepPercent + '%"></i></div></div>' +
       '<div class="person-latest"><span>Latest session</span><strong>' +
       (latest ? (latest.planName || latest.name || 'Workout') : 'Nothing logged yet') + '</strong><small>' +
@@ -1457,7 +1458,7 @@
       '<strong>' + monthNames[firstDate.getMonth()] + ' ' + firstDate.getFullYear() + '</strong></div>' +
       '<div class="calendar-key"><i class="done"></i>Completed <i class="pushed"></i>Pushed ' +
       '<i class="rest"></i>Rest <i class="scheduled"></i>Scheduled <i class="missed"></i>Missed ' +
-      '<i class="steps"></i>12.5k steps</div></div>' +
+      '<i class="steps"></i>12.5k goal</div></div>' +
       '<div class="month-grid">' + html + '</div>' +
       '<div class="calendar-foot"><span><b>J</b> Jordan · upper left</span>' +
       '<span><b>K</b> Kelsey · lower right</span></div></section>';
@@ -1488,6 +1489,7 @@
 
   function renderContent() {
     var plan;
+    setClass(elements.hello, 'progress-welcome', view === 'progress');
     renderHeader();
     setClass(elements.todayTab, 'active', view === 'today');
     setClass(elements.progressTab, 'active', view === 'progress');

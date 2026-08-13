@@ -16,6 +16,7 @@
     .kicker,.view-label,.metric-label,.card-label,.queue-label{color:#7c8581;font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
     .kicker strong{color:#a9ffcf}
     .welcome{margin-top:7px;font-size:34px;font-weight:760;letter-spacing:.045em;line-height:1}
+    .welcome.progress-welcome{font-size:29px;letter-spacing:.035em;white-space:nowrap}
     .dayline{margin-top:7px;color:#a5ada9;font-size:15px;font-weight:600}
     .toolbar{display:flex;align-items:center;justify-content:flex-end;padding-top:2px}
     .household{display:flex;align-items:center;margin-right:14px;padding:4px;border:1px solid #222a27;border-radius:11px;background:#0b0f0e}
@@ -26,8 +27,8 @@
     .household-person.done i{background:#a9ffcf;box-shadow:0 0 10px rgba(169,255,207,.28)}
     .household-person.done strong{color:#a9ffcf}
     .household-person.ready i{background:#e4ece7}
-    .toolbar-group{display:flex;margin-left:10px;padding:3px;border:1px solid #222a27;border-radius:10px;background:#0b0f0e}
-    .toolbar button{border:0;border-radius:7px;background:transparent;color:#76807b;padding:7px 10px;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+    .toolbar-group{display:flex;margin-left:10px;padding:4px;border:1px solid #26302c;border-radius:12px;background:#0b0f0e}
+    .toolbar button{min-width:76px;min-height:38px;border:0;border-radius:9px;background:transparent;color:#8d9792;padding:9px 13px;font-size:11px;font-weight:850;letter-spacing:.075em;text-transform:uppercase;cursor:pointer}
     .toolbar button.active{background:#e8eee9;color:#101411}
     .toolbar button.remote-focus{outline:2px solid #a9ffcf;outline-offset:3px;box-shadow:0 0 18px rgba(169,255,207,.18)}
     .live{display:flex;align-items:center;color:#89938e;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
@@ -202,6 +203,8 @@
     .person-steps span{display:block;color:#6f7974;font-size:8px;font-weight:850;letter-spacing:.13em;text-transform:uppercase}
     .person-steps strong{display:block;margin-top:4px;color:#eef2ef;font-size:17px;letter-spacing:-.03em}
     .person-steps small{color:#6f7974;font-size:7px;font-weight:800;text-transform:uppercase}
+    .person-steps.unavailable strong{color:#b5beb9;font-size:12px;font-weight:850;letter-spacing:.05em}
+    .person-steps.unavailable small{color:#8d9792}
     .step-track{height:3px;margin-top:7px;overflow:hidden;border-radius:4px;background:#252c29}
     .step-track i{display:block;height:100%;border-radius:4px;background:#d7c37b;box-shadow:0 0 9px rgba(215,195,123,.2)}
     .person-latest{min-height:0;margin-top:auto;border-top:1px solid #242d29;padding-top:9px}
@@ -211,13 +214,13 @@
     .calendar-head{flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:8px}
     .calendar-head span{display:block;color:#707a75;font-size:8px;font-weight:850;letter-spacing:.14em;text-transform:uppercase}
     .calendar-head strong{display:block;margin-top:3px;font-size:21px;letter-spacing:.02em}
-    .calendar-key{color:#6d7772;font-size:7px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
-    .calendar-key i{display:inline-block;width:6px;height:6px;margin:0 4px 0 8px;border-radius:50%;background:#171d1a}
+    .calendar-key{color:#8b9690;font-size:9px;font-weight:850;letter-spacing:.035em;text-transform:uppercase;white-space:nowrap}
+    .calendar-key i{display:inline-block;width:8px;height:8px;margin:0 4px 0 7px;border-radius:50%;background:#171d1a}
     .calendar-key i.done{background:#65d995}
     .calendar-key i.pushed{background:#8064d9}
     .calendar-key i.scheduled{background:#292e2b}
     .calendar-key i.missed{background:#713a43}
-    .calendar-key i.steps{border:1px solid #f1dc91;background:transparent}
+    .calendar-key i.steps{border:2px solid #f1dc91;background:transparent;vertical-align:-1px}
     .month-grid{flex:1;min-height:0;display:flex;flex-wrap:wrap;align-content:stretch}
     .calendar-weekday{width:14.285%;height:9%;display:flex;align-items:center;justify-content:center;color:#66706b;font-size:8px;font-weight:850;letter-spacing:.12em}
     .calendar-day{position:relative;width:14.285%;height:15.166%;border-top:2px solid #0c100f;border-right:2px solid #0c100f;overflow:hidden}
@@ -227,10 +230,10 @@
     .calendar-initial{position:absolute;z-index:2;color:rgba(255,255,255,.76);font-size:7px;font-weight:900;text-shadow:0 1px 3px rgba(0,0,0,.8)}
     .jordan-initial{left:5px;top:4px}
     .kelsey-initial{right:5px;bottom:4px}
-    .step-goal-marker{position:absolute;z-index:3;width:7px;height:7px;border:1px solid rgba(225,205,134,.7);border-radius:50%;background:rgba(7,10,8,.4)}
-    .step-goal-marker.met{border-color:#f1dc91;background:#f1dc91;box-shadow:0 0 7px rgba(241,220,145,.45)}
-    .jordan-step{left:17px;top:4px}
-    .kelsey-step{right:17px;bottom:4px}
+    .step-goal-marker{position:absolute;z-index:3;width:9px;height:9px;border:2px solid rgba(241,220,145,.78);border-radius:50%;background:rgba(7,10,8,.5)}
+    .step-goal-marker.met{border-color:#f1dc91;background:#f1dc91;box-shadow:0 0 9px rgba(241,220,145,.52)}
+    .jordan-step{left:18px;top:3px}
+    .kelsey-step{right:18px;bottom:3px}
     .empty-day{background:#0a0e0c}
     .calendar-foot{flex:0 0 auto;display:flex;justify-content:space-between;margin-top:6px;color:#5e6963;font-size:7px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
     .calendar-foot b{color:#dfe6e2}
