@@ -3,6 +3,7 @@ import {
   getWhoopTokenStore,
   normalizeWhoopProfile,
 } from '../lib/whoop-token-store.js';
+import { getWorkoutHistoryStore } from '../lib/workout-history-store.js';
 
 const REFRESH_EARLY_MS = 60 * 1000;
 
@@ -27,6 +28,25 @@ async function refreshAndStore(store, currentTokens) {
     }
     throw error;
   }
+}
+
+async function loadAndSyncWhoopData(profile, accessToken) {
+  const data = await loadWhoopData(accessToken);
+  try {
+    const saved = await getWorkoutHistoryStore().recordWhoopWorkouts(profile, data.workouts);
+    if (saved.length) {
+      console.log('[whoop-data] workout history synchronized', {
+        profile,
+        dates: saved.map((entry) => entry.date),
+      });
+    }
+  } catch (error) {
+    console.error('[whoop-data] workout history synchronization failed', {
+      profile,
+      error: error.message || String(error),
+    });
+  }
+  return data;
 }
 
 function authorizationError(res, details) {
@@ -84,7 +104,7 @@ export default async function handler(req, res) {
 
   try {
     return res.status(200).json({
-      ...(await loadWhoopData(tokens.accessToken)),
+      ...(await loadAndSyncWhoopData(profile, tokens.accessToken)),
       profile,
     });
   } catch (error) {
@@ -98,7 +118,7 @@ export default async function handler(req, res) {
     try {
       tokens = await refreshAndStore(store, tokens);
       return res.status(200).json({
-        ...(await loadWhoopData(tokens.accessToken)),
+        ...(await loadAndSyncWhoopData(profile, tokens.accessToken)),
         profile,
       });
     } catch (refreshError) {

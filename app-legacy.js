@@ -17,6 +17,7 @@
     dateOverrides: {},
     rescheduleEvents: []
   };
+  var sharedHistoryByProfile = { jordan: [], kelsey: [] };
   var profileId = readStorage('shopProfile') || 'jordan';
   var profile = { name: 'Jordan', week: {} };
   var whoopData = null;
@@ -325,6 +326,31 @@
     request.send(null);
   }
 
+  function sendJson(method, url, payload, callback) {
+    var request = new XMLHttpRequest();
+    var completed = false;
+    function finish(error, response, status) {
+      if (completed) return;
+      completed = true;
+      if (callback) callback(error, response, status);
+    }
+    request.open(method, url, true);
+    if (request.setRequestHeader) request.setRequestHeader('Content-Type', 'application/json');
+    request.onreadystatechange = function () {
+      var response;
+      if (request.readyState !== 4) return;
+      try {
+        response = JSON.parse(request.responseText || '{}');
+      } catch (parseError) {
+        response = {};
+      }
+      if (request.status >= 200 && request.status < 300) finish(null, response, request.status);
+      else finish(response.error || 'Request failed', response, request.status);
+    };
+    request.onerror = function () { finish('Network request failed', {}, 0); };
+    request.send(JSON.stringify(payload || {}));
+  }
+
   function showToast(message) {
     elements.toast.textContent = message;
     setClass(elements.toast, 'visible', true);
@@ -443,17 +469,17 @@
   }
 
   function loadState() {
-    return stateForPlan(
+    return stateWithSharedCompletion(profileId, stateForPlan(
       parseStoredJson(stateKey(), { sets: {}, completed: false }),
       profilePlan(profileId, trainingDayName())
-    );
+    ));
   }
 
   function profileState(id) {
-    return stateForPlan(
+    return stateWithSharedCompletion(id, stateForPlan(
       parseStoredJson('shopWorkout:' + id + ':' + todayKey(), { sets: {}, completed: false }),
       profilePlan(id, trainingDayName())
-    );
+    ));
   }
 
   function profilePlan(id, day) {
@@ -463,8 +489,125 @@
       : { name: 'Rest', exercises: [] };
   }
 
+  function historyHasDate(history, key) {
+    var index;
+    for (index = 0; index < history.length; index += 1) {
+      if (history[index].date === key) return true;
+    }
+    return false;
+  }
+
+  function completionOn(id, key) {
+    var history = historyFor(id);
+    var index;
+    for (index = 0; index < history.length; index += 1) {
+      if (history[index].date === key) return history[index];
+    }
+    return null;
+  }
+
+  function stateWithSharedCompletion(id, state) {
+    var completion = completionOn(id, todayKey());
+    var plan;
+    var completionPlan;
+    var index;
+    if (!completion || state.completed) return state;
+    plan = profilePlan(id, trainingDayName());
+    completionPlan = completion.planName || completion.name;
+    if (completion.completionSource !== 'whoop' && completionPlan && completionPlan !== plan.name) {
+      return state;
+    }
+    state.completed = true;
+    state.planName = plan.name;
+    state.completionSource = completion.completionSource || 'legacy';
+    state.completedAt = completion.completedAt || null;
+    state.whoopWorkoutId = completion.whoopWorkoutId || null;
+    if (!state.sets) state.sets = {};
+    for (index = 0; index < (plan.exercises || []).length; index += 1) {
+      state.sets[plan.exercises[index].id] = plan.exercises[index].sets;
+    }
+    return state;
+  }
+
   function historyFor(id) {
-    return parseStoredJson('shopHistory:' + id, []);
+    var shared = sharedHistoryByProfile[id] || [];
+    var local = parseStoredJson('shopHistory:' + id, []);
+    var merged = [];
+    var index;
+    for (index = 0; index < shared.length; index += 1) merged.push(shared[index]);
+    for (index = 0; index < local.length; index += 1) {
+      if (!historyHasDate(merged, local[index].date)) merged.push(local[index]);
+    }
+    merged.sort(function (left, right) {
+      return left.date < right.date ? 1 : (left.date > right.date ? -1 : 0);
+    });
+    return merged;
+  }
+
+  function upsertSharedHistory(id, entry) {
+    var history = sharedHistoryByProfile[id] || [];
+    var updated = [];
+    var index;
+    for (index = 0; index < history.length; index += 1) {
+      if (history[index].date !== entry.date) updated.push(history[index]);
+    }
+    updated.push(entry);
+    updated.sort(function (left, right) {
+      return left.date < right.date ? 1 : (left.date > right.date ? -1 : 0);
+    });
+    sharedHistoryByProfile[id] = updated;
+  }
+
+  function recordSharedCompletion(id, entry) {
+    var payload = {
+      profile: id,
+      date: entry.date,
+      planName: entry.name || entry.planName || 'Workout',
+      completionSource: entry.completionSource || 'legacy',
+      completedAt: entry.completedAt || new Date().toISOString(),
+      whoopWorkoutId: entry.whoopWorkoutId || null
+    };
+    upsertSharedHistory(id, payload);
+    sendJson('POST', '/api/workout-history', payload, function (error, response) {
+      if (!error && response && response.completion) upsertSharedHistory(id, response.completion);
+      if (view === 'progress') renderContent();
+    });
+  }
+
+  function removeSharedCompletion(id, key) {
+    var history = sharedHistoryByProfile[id] || [];
+    var filtered = [];
+    var index;
+    for (index = 0; index < history.length; index += 1) {
+      if (history[index].date !== key) filtered.push(history[index]);
+    }
+    sharedHistoryByProfile[id] = filtered;
+    sendJson('DELETE', '/api/workout-history', { profile: id, date: key });
+  }
+
+  function migrateLocalHistory() {
+    var ids = ['jordan', 'kelsey'];
+    var idIndex;
+    var local;
+    var index;
+    for (idIndex = 0; idIndex < ids.length; idIndex += 1) {
+      local = parseStoredJson('shopHistory:' + ids[idIndex], []);
+      for (index = 0; index < local.length; index += 1) {
+        if (!historyHasDate(sharedHistoryByProfile[ids[idIndex]] || [], local[index].date)) {
+          recordSharedCompletion(ids[idIndex], local[index]);
+        }
+      }
+    }
+  }
+
+  function loadWorkoutHistory() {
+    requestJson('/api/workout-history?time=' + new Date().getTime(), function (error, response) {
+      if (error || !response || !response.profiles) return;
+      sharedHistoryByProfile.jordan = response.profiles.jordan || [];
+      sharedHistoryByProfile.kelsey = response.profiles.kelsey || [];
+      migrateLocalHistory();
+      renderContent();
+    });
   }
 
   function completedOn(id, key) {
@@ -543,8 +686,8 @@
     if (status === 'done') return '#65d995';
     if (status === 'pushed') return '#8064d9';
     if (status === 'missed') return '#713a43';
-    if (status === 'scheduled') return '#314b40';
-    return '#171d1a';
+    if (status === 'scheduled') return '#292e2b';
+    return '#131715';
   }
 
   function monthStats(id, firstDate, lastDate) {
@@ -629,9 +772,22 @@
         if (history[index].date === todayKey()) found = true;
       }
       if (!found) {
-        history.unshift({ date: todayKey(), name: plan.name });
+        history.unshift({
+          date: todayKey(),
+          name: plan.name,
+          completionSource: state.completionSource || 'manual',
+          completedAt: state.completedAt || new Date().toISOString(),
+          whoopWorkoutId: state.whoopWorkoutId || null
+        });
         writeStorage('shopHistory:' + id, JSON.stringify(history.slice(0, 60)));
       }
+      recordSharedCompletion(id, {
+        date: todayKey(),
+        name: plan.name,
+        completionSource: state.completionSource || 'manual',
+        completedAt: state.completedAt || new Date().toISOString(),
+        whoopWorkoutId: state.whoopWorkoutId || null
+      });
     }
     if (id === profileId) renderContent();
     else renderHouseholdStatus();
@@ -1369,6 +1525,7 @@
       if (history[index].date !== todayKey()) filtered.push(history[index]);
     }
     writeStorage(historyKey(), JSON.stringify(filtered));
+    removeSharedCompletion(profileId, todayKey());
   }
 
   function undoLastSet() {
@@ -1610,6 +1767,7 @@
       whoopUpdatedAtByProfile[target] = new Date().getTime();
       renderWhoopMetrics(target, response);
       applyWhoopWorkoutCompletion(target, response);
+      loadWorkoutHistory();
     });
   }
 
@@ -1711,6 +1869,7 @@
     renderAll();
     livePlanRevision = -1;
     loadWorkoutPlan();
+    loadWorkoutHistory();
     loadAllWhoop();
   }
 
@@ -1742,10 +1901,12 @@
       }
       renderAll();
       loadWorkoutPlan();
+      loadWorkoutHistory();
       updateRestTimer();
       loadAllWhoop();
       window.setInterval(loadAllWhoop, WHOOP_POLL_MS);
       window.setInterval(loadWorkoutPlan, PLAN_POLL_MS);
+      window.setInterval(loadWorkoutHistory, PLAN_POLL_MS);
       window.setInterval(updateClock, 30 * 1000);
       window.setInterval(checkTrainingDayReset, 30 * 1000);
       window.setInterval(updateRestTimer, 1000);
