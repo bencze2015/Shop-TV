@@ -124,6 +124,11 @@
     if (state.target === 'both') return 'Jordan + Kelsey';
     return state.defaults.profiles[state.target].name;
   }
+  function catchUpLabel() {
+    if (state.target === 'both') return 'Do yesterday’s workout today';
+    var yesterday = addDays(trainingDate(), -1);
+    return 'Do yesterday’s ' + resolvedPlan(state.target, yesterday).name + ' today';
+  }
   function syncLabel() {
     if (!state.config.updatedAt) return 'Ready';
     return 'Saved ' + new Date(state.config.updatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -181,7 +186,12 @@
         return '<button data-target="' + target + '" class="' + (state.target === target ? 'active' : '') + '">' + label + '</button>';
       }).join('') + '</div></section>' +
       '<section class="card"><div class="section-head"><div><h2>Change this week</h2><p class="sub">One tap. The TV notices within 30 seconds.</p></div></div>' +
-      '<div class="quick-grid"><button class="action primary" data-action="defer"><strong>Move today → tomorrow</strong><span>Keeps today as rest and preserves the next workout.</span></button>' +
+      '<div class="quick-grid"><button class="action primary wide" data-action="catch-up"><strong>' + catchUpLabel() + '</strong><span>' +
+      (state.target === 'both'
+        ? 'Choose Jordan or Kelsey first so a completed workout is never moved for the other person.'
+        : 'Copies the missed session onto today without changing the permanent schedule.') +
+      '</span></button>' +
+      '<button class="action" data-action="defer"><strong>Move today → tomorrow</strong><span>Keeps today as rest and preserves the next workout.</span></button>' +
       '<button class="action" data-action="shift"><strong>Shift remaining week</strong><span>Moves every remaining session forward one day.</span></button>' +
       '<button class="action wide" data-action="restore"><strong>Restore normal schedule</strong><span>Removes this week’s exceptions for ' + targetLabel() + '.</span></button></div></section>' +
       '<section class="card"><div class="section-head"><div><h2>Normal weekly schedule</h2><p class="sub">Permanent until you change it again.</p></div></div>' +
@@ -240,6 +250,22 @@
       }
     });
     saveConfig('Moved to tomorrow · TV updating now');
+  }
+  function catchUpYesterday() {
+    var today = trainingDate();
+    var yesterday = addDays(today, -1);
+    var missed;
+    if (state.target === 'both') {
+      showToast('Choose Jordan or Kelsey first');
+      return;
+    }
+    missed = clone(resolvedPlan(state.target, yesterday));
+    if (!missed.exercises || !missed.exercises.length) {
+      showToast(state.defaults.profiles[state.target].name + ' had no workout yesterday');
+      return;
+    }
+    setOverride(state.target, today, missed);
+    saveConfig(missed.name + ' is ready today · TV updating now');
   }
   function shiftWeek() {
     var today = trainingDate();
@@ -332,7 +358,8 @@
     }
     if (!actionButton) return;
     var action = actionButton.dataset.action;
-    if (action === 'defer') deferToday();
+    if (action === 'catch-up') catchUpYesterday();
+    else if (action === 'defer') deferToday();
     else if (action === 'shift') shiftWeek();
     else if (action === 'restore') restoreWeek();
     else if (action === 'toggle-shared') { state.config.sharedSchedule = !state.config.sharedSchedule; saveConfig('Shared schedule updated'); }
