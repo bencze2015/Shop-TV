@@ -64,6 +64,8 @@ test('desktop TV layout is locked to one viewport with flexible exercise rows', 
   assert.match(html, /\.ambient-move\{[^}]*flex:1;min-height:0;[^}]*display:flex/);
   assert.match(html, /\.exercise\{[^}]*flex:1;min-height:0;[^}]*display:flex/);
   assert.match(html, /\.toolbar button\.remote-focus\{[^}]*outline:2px solid #a9ffcf/);
+  assert.match(html, /\.toolbar button\{[^}]*min-width:76px;min-height:38px/);
+  assert.match(html, /\.calendar-key\{[^}]*font-size:9px/);
   assert.match(html, /\.exercise\.remote-focus\{[^}]*box-shadow:[^}]*#a9ffcf/);
   assert.match(html, /\.timer-value\{[^}]*color:#a9ffcf/);
   assert.match(html, /\.celebration\{[^}]*position:fixed;[^}]*top:0;right:0;bottom:0;left:0/);
@@ -385,6 +387,49 @@ test('shared progress calendar splits Jordan and Kelsey status for every day', a
   assert.match(elements.content.innerHTML, /8\.4k/);
   assert.match(elements.content.innerHTML, /step-goal-marker jordan-step met/);
   assert.match(elements.content.innerHTML, /step-goal-marker kelsey-step under/);
+});
+
+test('missing step data is shown as not connected instead of a false zero', async () => {
+  const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
+  const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
+  const elements = createElementMap();
+  const TestDate = mutableDate('2026-08-13T12:00:00-07:00');
+
+  class FakeXmlHttpRequest {
+    open(_method, url) { this.url = url; }
+    send() {
+      this.readyState = 4;
+      this.status = 200;
+      if (this.url.startsWith('/workouts.json')) this.responseText = JSON.stringify(workouts);
+      else if (this.url.startsWith('/api/workout-plan')) this.responseText = JSON.stringify({
+        schemaVersion: 1, revision: 1, profileWeeks: {}, dateOverrides: {}, rescheduleEvents: [],
+      });
+      else if (this.url.startsWith('/api/workout-history')) this.responseText = JSON.stringify({
+        profiles: { jordan: [], kelsey: [] },
+      });
+      else if (this.url.startsWith('/api/daily-steps')) this.responseText = JSON.stringify({
+        goal: 12500, profiles: { jordan: [], kelsey: [] },
+      });
+      else this.responseText = JSON.stringify({ workouts: [], trends: {} });
+      this.onreadystatechange();
+    }
+  }
+
+  const context = {
+    console,
+    document: { getElementById: (id) => elements[id], addEventListener() {} },
+    history: { replaceState() {} },
+    location: { search: '', pathname: '/' },
+    localStorage: { getItem() { return null; }, setItem() {} },
+    XMLHttpRequest: FakeXmlHttpRequest,
+    setInterval() {}, setTimeout() { return 1; }, clearTimeout() {}, Date: TestDate,
+  };
+  context.window = context;
+  vm.runInNewContext(source, context);
+  context.setView('progress');
+
+  assert.equal((elements.content.innerHTML.match(/NOT CONNECTED/g) || []).length, 2);
+  assert.doesNotMatch(elements.content.innerHTML, /Steps today<\/span><strong>—/);
 });
 
 test('TV autopilot shows the remaining person, then returns to shared progress', async () => {
