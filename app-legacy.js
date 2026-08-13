@@ -36,7 +36,7 @@
   var focusZone = 'ambient';
   var trackingMode = 'ambient';
   var ambientAction = 0;
-  var toolbarIndex = 2;
+  var toolbarIndex = 0;
   var restTimerEnd = 0;
   var restTimerDuration = 0;
   var restTimerExerciseId = null;
@@ -58,7 +58,6 @@
     jordanBtn: byId('jordanBtn'),
     kelseyBtn: byId('kelseyBtn'),
     whoopLive: byId('whoopLive'),
-    todayTab: byId('todayTab'),
     progressTab: byId('progressTab'),
     whoop: byId('whoop'),
     content: byId('content'),
@@ -69,7 +68,7 @@
     celebrationTitle: byId('celebrationTitle'),
     celebrationMeta: byId('celebrationMeta')
   };
-  var toolbarElements = [elements.jordanBtn, elements.kelseyBtn, elements.todayTab, elements.progressTab];
+  var toolbarElements = [elements.jordanBtn, elements.kelseyBtn, elements.progressTab];
 
   if (days.indexOf(selectedDay) < 0) selectedDay = trainingDayName();
 
@@ -286,8 +285,12 @@
     if (saved.focusZone === 'ambient' || saved.focusZone === 'workout' || saved.focusZone === 'day' || saved.focusZone === 'toolbar') {
       focusZone = saved.focusZone;
     }
-    if (typeof saved.toolbarIndex === 'number' && saved.toolbarIndex >= 0 && saved.toolbarIndex < 4) {
+    if (saved.view === 'progress') {
+      toolbarIndex = 2;
+    } else if (typeof saved.toolbarIndex === 'number' && saved.toolbarIndex >= 0 && saved.toolbarIndex < 2) {
       toolbarIndex = saved.toolbarIndex;
+    } else {
+      toolbarIndex = profileId === 'jordan' ? 0 : 1;
     }
     if (finiteNumber(saved.restTimerEnd) && saved.restTimerEnd > new Date().getTime()) {
       restTimerEnd = saved.restTimerEnd;
@@ -997,7 +1000,7 @@
     focusZone = nextView === 'progress'
       ? 'toolbar'
       : (profilePlan(nextProfile, trainingDayName()).exercises.length ? 'ambient' : 'day');
-    toolbarIndex = nextView === 'progress' ? 3 : 2;
+    toolbarIndex = nextView === 'progress' ? 2 : (nextProfile === 'jordan' ? 0 : 1);
     updateDayUrl(null);
     saveUiState();
     renderContent();
@@ -1024,15 +1027,17 @@
     profileId = id;
     profile = data.profiles[id];
     writeStorage('shopProfile', id);
+    selectedDay = trainingDayName();
+    updateDayUrl(null);
     selectedExercise = 0;
     trackingMode = 'ambient';
     ambientAction = 0;
-    view = 'today';
     restTimerEnd = 0;
     restTimerDuration = 0;
     restTimerExerciseId = null;
     lastAction = null;
     restoreUiState();
+    view = 'today';
     focusZone = 'toolbar';
     toolbarIndex = id === 'jordan' ? 0 : 1;
     whoopData = whoopDataByProfile[id];
@@ -1095,8 +1100,8 @@
     var isToday = selectedDay === trainingDayName();
     elements.hello.textContent = 'HELLO, ' + profile.name.toUpperCase();
     elements.planName.textContent = plan.name.toUpperCase();
-    setClass(elements.jordanBtn, 'active', profileId === 'jordan');
-    setClass(elements.kelseyBtn, 'active', profileId === 'kelsey');
+    setClass(elements.jordanBtn, 'active', view === 'today' && profileId === 'jordan');
+    setClass(elements.kelseyBtn, 'active', view === 'today' && profileId === 'kelsey');
     setClass(elements.preview, 'visible', !isToday);
     renderHouseholdStatus();
     applyToolbarFocus();
@@ -1468,17 +1473,9 @@
     var now = trainingDate();
     var firstDate = new Date(now.getFullYear(), now.getMonth(), 1, 12, 0, 0, 0);
     var lastDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 12, 0, 0, 0);
-    var pending = pendingWorkoutProfiles();
-    var autopilotCopy = pending.length
-      ? (baseData.profiles[pending[0]].name + ' still due · TV auto')
-      : 'All caught up · TV auto';
     renderProgressHeader();
     elements.content.innerHTML =
       '<div class="view progress-view household-progress">' +
-      '<div class="view-head progress-head"><div><div class="view-label">Shared progress</div>' +
-      '<div class="view-title">YOUR MONTH, TOGETHER.</div>' +
-      '<div class="view-subtitle">Two routines. One honest view of the work getting done.</div></div>' +
-      '<div class="autopilot-status ' + (pending.length ? 'due' : '') + '"><i></i>' + autopilotCopy + '</div></div>' +
       '<div class="household-progress-layout">' +
       progressPersonPanel('jordan', firstDate, lastDate) +
       renderMonthCalendar(firstDate, lastDate) +
@@ -1491,7 +1488,6 @@
     var plan;
     setClass(elements.hello, 'progress-welcome', view === 'progress');
     renderHeader();
-    setClass(elements.todayTab, 'active', view === 'today');
     setClass(elements.progressTab, 'active', view === 'progress');
     if (view === 'progress') {
       renderProgress();
@@ -1937,9 +1933,9 @@
 
   function setView(newView) {
     noteInteraction();
-    view = newView;
+    view = newView === 'progress' ? 'progress' : 'today';
     focusZone = 'toolbar';
-    toolbarIndex = newView === 'progress' ? 3 : 2;
+    toolbarIndex = view === 'progress' ? 2 : (profileId === 'jordan' ? 0 : 1);
     saveUiState();
     renderContent();
   }
@@ -1953,7 +1949,6 @@
   function activateToolbar() {
     if (toolbarIndex === 0) setProfile('jordan');
     else if (toolbarIndex === 1) setProfile('kelsey');
-    else if (toolbarIndex === 2) setView('today');
     else setView('progress');
   }
 
@@ -2054,7 +2049,7 @@
       restoredPlan = planFor(selectedDay);
       if (view === 'progress') {
         focusZone = 'toolbar';
-        toolbarIndex = 3;
+        toolbarIndex = 2;
       } else if ((!restoredPlan.exercises || !restoredPlan.exercises.length) &&
           (focusZone === 'workout' || focusZone === 'ambient')) {
         focusZone = 'day';
@@ -2164,7 +2159,7 @@
         if (focusZone === 'toolbar') return;
         if (view !== 'today' || focusZone === 'day' || focusZone === 'ambient') {
           focusZone = 'toolbar';
-          toolbarIndex = view === 'progress' ? 3 : 2;
+          toolbarIndex = view === 'progress' ? 2 : (profileId === 'jordan' ? 0 : 1);
           saveUiState();
           renderContent();
           return;
@@ -2174,7 +2169,7 @@
           selectedExercise -= 1;
         } else {
           focusZone = 'toolbar';
-          toolbarIndex = 2;
+          toolbarIndex = profileId === 'jordan' ? 0 : 1;
         }
         saveUiState();
         renderContent();
