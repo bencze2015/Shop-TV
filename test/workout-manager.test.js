@@ -12,3 +12,18 @@ test('Workout Manager offers a person-scoped missed-workout catch-up action', as
   assert.match(source, /setOverride\(state\.target, today, missed\)/);
   assert.match(source, /without changing the permanent schedule/);
 });
+
+test('Workout Manager leads with a complete week and previews the rotating accessory', async () => {
+  const [source, html] = await Promise.all([
+    readFile(new URL('../manager.js', import.meta.url), 'utf8'),
+    readFile(new URL('../manage.html', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(source, /function renderWeekProjection\(today\)/);
+  assert.match(source, /data-week-offset="0"/);
+  assert.match(source, /data-week-offset="1"/);
+  assert.match(source, /The first two movements stay consistent/);
+  assert.match(source, /function rotatedPlan\(plan, date\)/);
+  assert.match(html, /\.projection-day/);
+  assert.match(html, /\.movement\.rotating/);
+});
