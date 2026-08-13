@@ -4,6 +4,9 @@
   var TRAINING_DAY_START_HOUR = 7;
   var WHOOP_POLL_MS = 5 * 60 * 1000;
   var PLAN_POLL_MS = 30 * 1000;
+  var STEPS_POLL_MS = 5 * 60 * 1000;
+  var AUTOPILOT_POLL_MS = 30 * 1000;
+  var AUTOPILOT_IDLE_MS = 90 * 1000;
   var WHOOP_RETRY_MS = 60 * 1000;
   var CELEBRATION_MS = 45 * 1000;
   var requestedDay = queryValue('preview') === '1' ? queryValue('day') : null;
@@ -18,6 +21,10 @@
     rescheduleEvents: []
   };
   var sharedHistoryByProfile = { jordan: [], kelsey: [] };
+  var sharedStepsByProfile = { jordan: [], kelsey: [] };
+  var sharedStepGoal = 12500;
+  var workoutHistoryReady = false;
+  var lastInteractionAt = 0;
   var profileId = readStorage('shopProfile') || 'jordan';
   var profile = { name: 'Jordan', week: {} };
   var whoopData = null;
@@ -225,6 +232,7 @@
         applyWhoopWorkoutCompletion(targetProfileId, whoopDataByProfile[targetProfileId]);
       }
     }
+    runTvAutopilot(false);
   }
 
   function loadWorkoutPlan() {
@@ -605,9 +613,50 @@
       if (error || !response || !response.profiles) return;
       sharedHistoryByProfile.jordan = response.profiles.jordan || [];
       sharedHistoryByProfile.kelsey = response.profiles.kelsey || [];
+      workoutHistoryReady = true;
       migrateLocalHistory();
       renderContent();
+      runTvAutopilot(false);
     });
+  }
+
+  function loadDailySteps() {
+    requestJson('/api/daily-steps?time=' + new Date().getTime(), function (error, response) {
+      if (error || !response || !response.profiles) return;
+      sharedStepsByProfile.jordan = response.profiles.jordan || [];
+      sharedStepsByProfile.kelsey = response.profiles.kelsey || [];
+      if (typeof response.goal === 'number') sharedStepGoal = response.goal;
+      if (view === 'progress') renderContent();
+    });
+  }
+
+  function stepsOn(id, key) {
+    var entries = sharedStepsByProfile[id] || [];
+    var index;
+    for (index = 0; index < entries.length; index += 1) {
+      if (entries[index].date === key) return entries[index];
+    }
+    return null;
+  }
+
+  function formatStepCount(value) {
+    var rounded;
+    if (typeof value !== 'number' || !isFinite(value)) return '—';
+    if (value < 1000) return String(value);
+    rounded = Math.round(value / 100) / 10;
+    return String(rounded).replace(/\.0$/, '') + 'k';
+  }
+
+  function stepGoalLabel(id, key) {
+    var entry = stepsOn(id, key);
+    if (!entry) return 'steps unavailable';
+    return entry.steps + ' steps' + (entry.met ? ' · goal met' : ' · below goal');
+  }
+
+  function stepGoalMarker(id, key) {
+    var entry = stepsOn(id, key);
+    if (!entry) return '';
+    return '<span class="step-goal-marker ' + id + '-step ' + (entry.met ? 'met' : 'under') + '"></span>';
   }
 
   function completedOn(id, key) {
@@ -879,8 +928,98 @@
     return { scheduled: scheduled, completed: completed };
   }
 
+  function noteInteraction() {
+    lastInteractionAt = new Date().getTime();
+  }
+
+  function activeSetSession() {
+    var state;
+    var key;
+    if (trackingMode !== 'sets' || selectedDay !== trainingDayName()) return false;
+    state = loadState();
+    if (state.completed || !state.sets) return false;
+    for (key in state.sets) {
+      if (state.sets.hasOwnProperty(key) && state.sets[key] > 0) return true;
+    }
+    return false;
+  }
+
+  function pendingWorkoutProfiles() {
+    var ids = ['jordan', 'kelsey'];
+    var pending = [];
+    var index;
+    var plan;
+    for (index = 0; index < ids.length; index += 1) {
+      plan = profilePlan(ids[index], trainingDayName());
+      if (plan.exercises && plan.exercises.length && !profileState(ids[index]).completed) {
+        pending.push(ids[index]);
+      }
+    }
+    return pending;
+  }
+
+  function runTvAutopilot(force) {
+    var now = new Date().getTime();
+    var pending;
+    var nextProfile;
+    var nextView;
+    var changed = false;
+    if (!workoutHistoryReady || celebrationVisible || activeSetSession()) return;
+    if (!force && lastInteractionAt && now - lastInteractionAt < AUTOPILOT_IDLE_MS) return;
+    pending = pendingWorkoutProfiles();
+    nextView = pending.length ? 'today' : 'progress';
+    nextProfile = pending.length ? pending[0] : profileId;
+
+    if (selectedDay !== trainingDayName()) {
+      selectedDay = trainingDayName();
+      changed = true;
+    }
+    if (profileId !== nextProfile && data.profiles[nextProfile]) {
+      profileId = nextProfile;
+      profile = data.profiles[nextProfile];
+      whoopData = whoopDataByProfile[nextProfile];
+      writeStorage('shopProfile', nextProfile);
+      changed = true;
+    }
+    if (view !== nextView) {
+      view = nextView;
+      changed = true;
+    }
+    if (!changed) return;
+
+    selectedExercise = 0;
+    trackingMode = 'ambient';
+    ambientAction = 0;
+    restTimerEnd = 0;
+    restTimerDuration = 0;
+    restTimerExerciseId = null;
+    lastAction = null;
+    focusZone = nextView === 'progress'
+      ? 'toolbar'
+      : (profilePlan(nextProfile, trainingDayName()).exercises.length ? 'ambient' : 'day');
+    toolbarIndex = nextView === 'progress' ? 3 : 2;
+    updateDayUrl(null);
+    saveUiState();
+    renderContent();
+    if (nextView === 'today') {
+      if (whoopDataByProfile[nextProfile]) renderWhoopMetrics(nextProfile, whoopDataByProfile[nextProfile]);
+      else {
+        elements.whoop.className = 'status';
+        elements.whoop.textContent = profile.name + ' WHOOP is updating…';
+      }
+    }
+  }
+
+  function refreshDashboardData() {
+    loadWorkoutPlan();
+    loadWorkoutHistory();
+    loadDailySteps();
+    loadAllWhoop();
+  }
+
   function setProfile(id) {
     if (!data.profiles[id]) return;
+    noteInteraction();
     saveUiState();
     profileId = id;
     profile = data.profiles[id];
@@ -1256,6 +1395,8 @@
     var latest = latestHistory(id);
     var whoop = progressWhoopValues(id);
     var initial = target.name.slice(0, 1).toUpperCase();
+    var dailySteps = stepsOn(id, todayKey());
+    var stepPercent = dailySteps ? Math.min(100, Math.round(dailySteps.steps / dailySteps.goal * 100)) : 0;
     return '<section class="person-progress ' + id + '-progress">' +
       '<div class="person-progress-head"><div class="person-avatar">' + initial + '</div>' +
       '<div><span>Monthly rhythm</span><strong>' + target.name + '</strong></div></div>' +
@@ -1266,8 +1407,12 @@
       stats.percent + '%</strong></div></div>' +
       '<div class="person-streak"><span>Current streak</span><strong>' + stats.streak +
       '</strong><small>session' + (stats.streak === 1 ? '' : 's') + '</small></div>' +
+      '<div class="person-steps"><div class="person-steps-head"><div><span>Steps today</span><strong>' +
+      formatStepCount(dailySteps ? dailySteps.steps : null) + '</strong></div><small>' +
+      formatStepCount(dailySteps ? dailySteps.goal : sharedStepGoal) + ' goal</small></div>' +
+      '<div class="step-track"><i style="width:' + stepPercent + '%"></i></div></div>' +
       '<div class="person-latest"><span>Latest session</span><strong>' +
-      (latest ? latest.name : 'Nothing logged yet') + '</strong><small>' +
+      (latest ? (latest.planName || latest.name || 'Workout') : 'Nothing logged yet') + '</strong><small>' +
       (latest ? shortDate(latest.date) : 'Your first green day starts here') + '</small></div></section>';
   }
 
@@ -1298,18 +1443,21 @@
         kelseyStatus = calendarStatus('kelsey', date);
         html += '<div class="calendar-day filled j-' + jordanStatus + ' k-' + kelseyStatus +
           (key === today ? ' today' : '') + '" data-date="' + key + '" title="Jordan: ' +
-          calendarStatusLabel(jordanStatus) + ' · Kelsey: ' + calendarStatusLabel(kelseyStatus) +
+          calendarStatusLabel(jordanStatus) + ' · ' + stepGoalLabel('jordan', key) +
+          ' · Kelsey: ' + calendarStatusLabel(kelseyStatus) + ' · ' + stepGoalLabel('kelsey', key) +
           '" style="background:linear-gradient(135deg,' + calendarStatusColor(jordanStatus) +
           ' 0%,' + calendarStatusColor(jordanStatus) + ' 48%,#090c0a 49%,#090c0a 51%,' +
           calendarStatusColor(kelseyStatus) + ' 52%,' + calendarStatusColor(kelseyStatus) +
-          ' 100%)"><span class="calendar-initial jordan-initial">J</span><b>' + dayNumber +
-          '</b><span class="calendar-initial kelsey-initial">K</span></div>';
+          ' 100%)"><span class="calendar-initial jordan-initial">J</span>' + stepGoalMarker('jordan', key) +
+          '<b>' + dayNumber + '</b><span class="calendar-initial kelsey-initial">K</span>' +
+          stepGoalMarker('kelsey', key) + '</div>';
       }
     }
     return '<section class="calendar-panel"><div class="calendar-head"><div><span>Together this month</span>' +
       '<strong>' + monthNames[firstDate.getMonth()] + ' ' + firstDate.getFullYear() + '</strong></div>' +
       '<div class="calendar-key"><i class="done"></i>Completed <i class="pushed"></i>Pushed ' +
-      '<i class="rest"></i>Rest <i class="scheduled"></i>Scheduled <i class="missed"></i>Missed</div></div>' +
+      '<i class="rest"></i>Rest <i class="scheduled"></i>Scheduled <i class="missed"></i>Missed ' +
+      '<i class="steps"></i>12.5k steps</div></div>' +
       '<div class="month-grid">' + html + '</div>' +
       '<div class="calendar-foot"><span><b>J</b> Jordan · upper left</span>' +
       '<span><b>K</b> Kelsey · lower right</span></div></section>';
@@ -1319,12 +1467,17 @@
     var now = trainingDate();
     var firstDate = new Date(now.getFullYear(), now.getMonth(), 1, 12, 0, 0, 0);
     var lastDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 12, 0, 0, 0);
+    var pending = pendingWorkoutProfiles();
+    var autopilotCopy = pending.length
+      ? (baseData.profiles[pending[0]].name + ' still due · TV auto')
+      : 'All caught up · TV auto';
     renderProgressHeader();
     elements.content.innerHTML =
       '<div class="view progress-view household-progress">' +
       '<div class="view-head progress-head"><div><div class="view-label">Shared progress</div>' +
       '<div class="view-title">YOUR MONTH, TOGETHER.</div>' +
-      '<div class="view-subtitle">Two routines. One honest view of the work getting done.</div></div></div>' +
+      '<div class="view-subtitle">Two routines. One honest view of the work getting done.</div></div>' +
+      '<div class="autopilot-status ' + (pending.length ? 'due' : '') + '"><i></i>' + autopilotCopy + '</div></div>' +
       '<div class="household-progress-layout">' +
       progressPersonPanel('jordan', firstDate, lastDate) +
       renderMonthCalendar(firstDate, lastDate) +
@@ -1351,6 +1504,7 @@
   }
 
   function setTrackingMode(mode) {
+    noteInteraction();
     trackingMode = mode === 'sets' ? 'sets' : 'ambient';
     ambientAction = 0;
     focusZone = trackingMode === 'sets' ? 'workout' : 'ambient';
@@ -1440,6 +1594,7 @@
 
   function activateAmbientAction(index) {
     var state;
+    noteInteraction();
     if (index === 1) {
       setTrackingMode('sets');
       return;
@@ -1461,6 +1616,7 @@
     var complete = true;
     var previousDone;
     var newDone;
+    noteInteraction();
     if (view !== 'today') return;
     if (selectedDay !== trainingDayName()) {
       useToday();
@@ -1558,6 +1714,7 @@
   }
 
   function selectExercise(index) {
+    noteInteraction();
     selectedExercise = index;
     focusZone = 'workout';
     saveUiState();
@@ -1777,6 +1934,7 @@
   }
 
   function setView(newView) {
+    noteInteraction();
     view = newView;
     focusZone = 'toolbar';
     toolbarIndex = newView === 'progress' ? 3 : 2;
@@ -1814,6 +1972,7 @@
   }
 
   function setDay(day) {
+    noteInteraction();
     selectedDay = day;
     selectedExercise = 0;
     trackingMode = 'ambient';
@@ -1826,10 +1985,12 @@
 
   function changeDay(amount) {
     var index = days.indexOf(selectedDay);
+    noteInteraction();
     setDay(days[(index + amount + 7) % 7]);
   }
 
   function useToday() {
+    noteInteraction();
     selectedDay = trainingDayName();
     selectedExercise = 0;
     trackingMode = 'ambient';
@@ -1902,11 +2063,14 @@
       renderAll();
       loadWorkoutPlan();
       loadWorkoutHistory();
+      loadDailySteps();
       updateRestTimer();
       loadAllWhoop();
       window.setInterval(loadAllWhoop, WHOOP_POLL_MS);
       window.setInterval(loadWorkoutPlan, PLAN_POLL_MS);
       window.setInterval(loadWorkoutHistory, PLAN_POLL_MS);
+      window.setInterval(loadDailySteps, STEPS_POLL_MS);
+      window.setInterval(runTvAutopilot, AUTOPILOT_POLL_MS);
       window.setInterval(updateClock, 30 * 1000);
       window.setInterval(checkTrainingDayReset, 30 * 1000);
       window.setInterval(updateRestTimer, 1000);
@@ -1927,6 +2091,7 @@
   window.undoLastSet = undoLastSet;
   window.selectExercise = selectExercise;
   window.loadWorkoutPlan = loadWorkoutPlan;
+  window.runTvAutopilot = runTvAutopilot;
 
   function isBackKey(event) {
     return event.key === 'Escape' || event.key === 'Backspace' ||
@@ -1934,8 +2099,12 @@
   }
 
   if (document.addEventListener) {
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) refreshDashboardData();
+    });
     document.addEventListener('keydown', function (event) {
       var items;
+      noteInteraction();
       if (isBackKey(event)) {
         if (celebrationVisible) {
           dismissCelebration();
@@ -2020,6 +2189,10 @@
         else if (focusZone === 'ambient') activateAmbientAction(ambientAction);
       }
     });
+  }
+
+  if (window.addEventListener) {
+    window.addEventListener('focus', refreshDashboardData);
   }
 
   init();
