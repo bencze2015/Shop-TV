@@ -1489,10 +1489,16 @@
   }
 
   function renderRemoteHint() {
-    if (view === 'today' && trackingMode === 'sets') return;
+    elements.controlHint.className = 'control-hint remote-dock';
     elements.controlHint.innerHTML =
-      '<span class="key">←</span> Jordan <span class="key">↑</span> Progress ' +
-      '<span class="key">→</span> Kelsey <span class="key">↓</span> Workout complete';
+      '<button class="remote-command' + (view === 'today' && profileId === 'jordan' ? ' active' : '') + '" onclick="setProfile(\'jordan\')">' +
+      '<span class="remote-color red"></span><strong>1</strong>Jordan</button>' +
+      '<button class="remote-command' + (view === 'today' && profileId === 'kelsey' ? ' active' : '') + '" onclick="setProfile(\'kelsey\')">' +
+      '<span class="remote-color green"></span><strong>2</strong>Kelsey</button>' +
+      '<button class="remote-command' + (view === 'progress' ? ' active' : '') + '" onclick="setView(\'progress\')">' +
+      '<span class="remote-color yellow"></span><strong>3</strong>Progress</button>' +
+      '<button class="remote-command complete" onclick="armRemoteCompletion()">' +
+      '<span class="remote-color blue"></span><strong>0</strong>Workout complete</button>';
   }
 
   function renderContent() {
@@ -2141,6 +2147,7 @@
   window.activateAmbientAction = activateAmbientAction;
   window.setTrackingMode = setTrackingMode;
   window.dismissCelebration = dismissCelebration;
+  window.dismissRemoteCompletion = dismissRemoteCompletion;
   window.armRemoteCompletion = armRemoteCompletion;
   window.confirmRemoteCompletion = confirmRemoteCompletion;
   window.undoLastSet = undoLastSet;
@@ -2157,6 +2164,11 @@
     if (event.preventDefault) event.preventDefault();
     if (event.stopPropagation) event.stopPropagation();
     event.returnValue = false;
+  }
+
+  function isRemoteShortcut(event, key, keyCode, colorName, colorCode) {
+    return event.key === key || event.keyCode === keyCode ||
+      event.key === colorName || event.keyCode === colorCode;
   }
 
   if (document.addEventListener) {
@@ -2193,8 +2205,31 @@
         return;
       }
       if (remoteCompleteArmed) {
-        if (event.key === 'Enter' || event.keyCode === 13) confirmRemoteCompletion();
+        if (event.key === 'Enter' || event.keyCode === 13 ||
+            isRemoteShortcut(event, '0', 48, 'ColorF3Blue', 406)) {
+          confirmRemoteCompletion();
+        }
         consumeRemoteEvent(event);
+        return;
+      }
+      if (isRemoteShortcut(event, '1', 49, 'ColorF0Red', 403)) {
+        consumeRemoteEvent(event);
+        setProfile('jordan');
+        return;
+      }
+      if (isRemoteShortcut(event, '2', 50, 'ColorF1Green', 404)) {
+        consumeRemoteEvent(event);
+        setProfile('kelsey');
+        return;
+      }
+      if (isRemoteShortcut(event, '3', 51, 'ColorF2Yellow', 405)) {
+        consumeRemoteEvent(event);
+        setView('progress');
+        return;
+      }
+      if (isRemoteShortcut(event, '0', 48, 'ColorF3Blue', 406)) {
+        consumeRemoteEvent(event);
+        armRemoteCompletion();
         return;
       }
       if (trackingMode !== 'sets' || view !== 'today') {
