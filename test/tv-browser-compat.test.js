@@ -65,7 +65,8 @@ test('desktop TV layout is locked to one viewport with flexible exercise rows', 
   assert.match(html, /\.exercise\{[^}]*flex:1;min-height:0;[^}]*display:flex/);
   assert.match(html, /\.toolbar button\.remote-focus\{[^}]*outline:2px solid #a9ffcf/);
   assert.match(html, /\.toolbar button\{[^}]*min-width:76px;min-height:38px/);
-  assert.match(html, /\.calendar-key\{[^}]*font-size:9px/);
+  assert.match(html, /\.calendar-key\{[^}]*font-size:18px/);
+  assert.match(html, /\.calendar-initial\{[^}]*font-size:14px/);
   assert.match(html, /\.exercise\.remote-focus\{[^}]*box-shadow:[^}]*#a9ffcf/);
   assert.match(html, /\.timer-value\{[^}]*color:#a9ffcf/);
   assert.match(html, /\.celebration\{[^}]*position:fixed;[^}]*top:0;right:0;bottom:0;left:0/);
