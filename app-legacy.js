@@ -11,6 +11,12 @@
   var data = { profiles: {} };
   var baseData = { profiles: {} };
   var livePlanRevision = -1;
+  var livePlanConfig = {
+    schemaVersion: 1,
+    profileWeeks: {},
+    dateOverrides: {},
+    rescheduleEvents: []
+  };
   var profileId = readStorage('shopProfile') || 'jordan';
   var profile = { name: 'Jordan', week: {} };
   var whoopData = null;
@@ -178,6 +184,10 @@
     var targetProfileId;
     var day;
     if (!baseData.profiles || !config || config.schemaVersion !== 1) return;
+    livePlanConfig = cloneJson(config);
+    if (!livePlanConfig.profileWeeks) livePlanConfig.profileWeeks = {};
+    if (!livePlanConfig.dateOverrides) livePlanConfig.dateOverrides = {};
+    if (!livePlanConfig.rescheduleEvents) livePlanConfig.rescheduleEvents = [];
     data = cloneJson(baseData);
     if (config.profileWeeks) {
       for (targetProfileId in config.profileWeeks) {
@@ -451,6 +461,151 @@
     return target && target.week && target.week[day]
       ? target.week[day]
       : { name: 'Rest', exercises: [] };
+  }
+
+  function historyFor(id) {
+    return parseStoredJson('shopHistory:' + id, []);
+  }
+
+  function completedOn(id, key) {
+    var history = historyFor(id);
+    var index;
+    for (index = 0; index < history.length; index += 1) {
+      if (history[index].date === key) return true;
+    }
+    return false;
+  }
+
+  function rescheduleFrom(id, key) {
+    var events = livePlanConfig.rescheduleEvents || [];
+    var index;
+    for (index = 0; index < events.length; index += 1) {
+      if (events[index].profile === id && events[index].fromDate === key) return events[index];
+    }
+    return null;
+  }
+
+  function rotatedPlanForDate(plan, date) {
+    var rotation = baseData.accessoryRotation;
+    var startsOn;
+    var weekNumber;
+    var cycle;
+    var result = cloneJson(plan || { name: 'Rest', exercises: [] });
+    if (!rotation || !rotation.cycleWeeks || !rotation.cycleWeeks.length ||
+        !result.exercises || result.exercises.length < 3) return result;
+    startsOn = dateFromKey(rotation.startsOn);
+    if (!startsOn) return result;
+    weekNumber = Math.floor((mondayFor(date).getTime() - mondayFor(startsOn).getTime()) /
+      (7 * 24 * 60 * 60 * 1000));
+    if (weekNumber < 0) return result;
+    cycle = rotation.cycleWeeks[weekNumber % rotation.cycleWeeks.length];
+    if (cycle[result.name]) result.exercises[2] = cloneJson(cycle[result.name]);
+    return result;
+  }
+
+  function profilePlanForDate(id, date) {
+    var key = dateKey(date);
+    var override = livePlanConfig.dateOverrides && livePlanConfig.dateOverrides[key];
+    var target = baseData.profiles && baseData.profiles[id];
+    var week;
+    var day;
+    if (override && override[id]) return cloneJson(override[id]);
+    if (!target) return { name: 'Rest', exercises: [] };
+    week = livePlanConfig.profileWeeks && livePlanConfig.profileWeeks[id]
+      ? livePlanConfig.profileWeeks[id]
+      : target.week;
+    day = days[date.getDay()];
+    return rotatedPlanForDate(week[day] || { name: 'Rest', exercises: [] }, date);
+  }
+
+  function calendarStatus(id, date) {
+    var key = dateKey(date);
+    var plan;
+    var today = trainingDate();
+    today.setHours(12, 0, 0, 0);
+    if (completedOn(id, key)) return 'done';
+    if (rescheduleFrom(id, key)) return 'pushed';
+    plan = profilePlanForDate(id, date);
+    if (!plan.exercises || !plan.exercises.length) return 'rest';
+    if (date.getTime() < today.getTime()) return 'missed';
+    return 'scheduled';
+  }
+
+  function calendarStatusLabel(status) {
+    if (status === 'done') return 'completed';
+    if (status === 'pushed') return 'pushed';
+    if (status === 'missed') return 'missed';
+    if (status === 'scheduled') return 'scheduled';
+    return 'rest';
+  }
+
+  function calendarStatusColor(status) {
+    if (status === 'done') return '#65d995';
+    if (status === 'pushed') return '#8064d9';
+    if (status === 'missed') return '#713a43';
+    if (status === 'scheduled') return '#314b40';
+    return '#171d1a';
+  }
+
+  function monthStats(id, firstDate, lastDate) {
+    var today = trainingDate();
+    var cursor = new Date(firstDate.getTime());
+    var planned = 0;
+    var completed = 0;
+    var status;
+    var plan;
+    var streak = 0;
+    var streakCursor;
+    var considered;
+    today.setHours(12, 0, 0, 0);
+    while (cursor.getTime() <= lastDate.getTime() && cursor.getTime() <= today.getTime()) {
+      status = calendarStatus(id, cursor);
+      plan = profilePlanForDate(id, cursor);
+      if ((plan.exercises && plan.exercises.length) || status === 'pushed' || status === 'done') {
+        planned += 1;
+        if (status === 'done') completed += 1;
+      }
+      cursor = addDateDays(cursor, 1);
+    }
+    streakCursor = new Date(today.getTime());
+    considered = 0;
+    while (considered < 120) {
+      status = calendarStatus(id, streakCursor);
+      plan = profilePlanForDate(id, streakCursor);
+      if (streakCursor.getTime() === today.getTime() && status === 'scheduled') {
+        streakCursor = addDateDays(streakCursor, -1);
+        considered += 1;
+        continue;
+      }
+      if ((plan.exercises && plan.exercises.length) || status === 'pushed' || status === 'done') {
+        if (status === 'done') streak += 1;
+        else break;
+      }
+      streakCursor = addDateDays(streakCursor, -1);
+      considered += 1;
+    }
+    return {
+      planned: planned,
+      completed: completed,
+      percent: planned ? Math.round(completed / planned * 100) : 100,
+      streak: streak
+    };
+  }
+
+  function latestHistory(id) {
+    var history = historyFor(id);
+    var latest = null;
+    var index;
+    for (index = 0; index < history.length; index += 1) {
+      if (!latest || history[index].date > latest.date) latest = history[index];
+    }
+    return latest;
+  }
+
+  function shortDate(key) {
+    var date = dateFromKey(key);
+    var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return date ? monthNames[date.getMonth()] + ' ' + date.getDate() : key;
   }
 
   function loadDisplayState() {
@@ -897,37 +1052,129 @@
       '<span class="key">Today</span> Return to live';
   }
 
-  function renderProgress() {
-    var stats = weekStats();
-    var percent = stats.scheduled ? Math.round(stats.completed / stats.scheduled * 100) : 100;
-    var history = parseStoredJson(historyKey(), []);
-    var trends = whoopData && whoopData.trends ? whoopData.trends : {};
-    var historyHtml = '';
+  function progressWhoopValues(id) {
+    var response = whoopDataByProfile[id] || {};
+    var recovery = response.recovery && response.recovery.score ? response.recovery.score : {};
+    var sleep = response.sleep && response.sleep.score ? response.sleep.score : {};
+    return {
+      recovery: recovery.recovery_score != null ? Math.round(recovery.recovery_score) + '%' : '—',
+      hrv: recovery.hrv_rmssd_milli != null ? Math.round(recovery.hrv_rmssd_milli) + ' ms' : '—',
+      sleep: sleep.sleep_performance_percentage != null ? Math.round(sleep.sleep_performance_percentage) + '%' : '—'
+    };
+  }
+
+  function progressWhoopMetric(id, label, value) {
+    var name = baseData.profiles && baseData.profiles[id] ? baseData.profiles[id].name : id;
+    return '<div class="metric household-metric ' + id + '"><span class="metric-person">' +
+      name + '</span><span class="metric-label">' + label + '</span><b>' + value + '</b></div>';
+  }
+
+  function renderProgressWhoop() {
+    var jordan = progressWhoopValues('jordan');
+    var kelsey = progressWhoopValues('kelsey');
+    elements.whoop.className = 'whoop household-whoop';
+    elements.whoop.innerHTML =
+      progressWhoopMetric('jordan', 'Recovery', jordan.recovery) +
+      progressWhoopMetric('jordan', 'HRV', jordan.hrv) +
+      progressWhoopMetric('kelsey', 'Recovery', kelsey.recovery) +
+      progressWhoopMetric('kelsey', 'HRV', kelsey.hrv);
+  }
+
+  function renderProgressHeader() {
+    var now = trainingDate();
+    var monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'];
+    elements.hello.textContent = 'HOUSEHOLD PROGRESS';
+    elements.planName.textContent = 'SHARED';
+    elements.date.textContent = monthNames[now.getMonth()] + ' ' + now.getFullYear();
+    elements.whoopLive.textContent = 'HOUSEHOLD WHOOP · LIVE';
+    setClass(elements.preview, 'visible', false);
+    setClass(elements.jordanBtn, 'active', false);
+    setClass(elements.kelseyBtn, 'active', false);
+    renderProgressWhoop();
+  }
+
+  function progressPersonPanel(id, firstDate, lastDate) {
+    var target = baseData.profiles && baseData.profiles[id] ? baseData.profiles[id] : { name: id };
+    var stats = monthStats(id, firstDate, lastDate);
+    var latest = latestHistory(id);
+    var whoop = progressWhoopValues(id);
+    var initial = target.name.slice(0, 1).toUpperCase();
+    return '<section class="person-progress ' + id + '-progress">' +
+      '<div class="person-progress-head"><div class="person-avatar">' + initial + '</div>' +
+      '<div><span>Monthly rhythm</span><strong>' + target.name + '</strong></div></div>' +
+      '<div class="person-recovery"><span>WHOOP recovery</span><strong>' + whoop.recovery + '</strong>' +
+      '<small>Sleep ' + whoop.sleep + '</small></div>' +
+      '<div class="person-stat-grid"><div><span>Sessions</span><strong>' + stats.completed +
+      ' <small>/ ' + stats.planned + '</small></strong></div><div><span>Consistency</span><strong>' +
+      stats.percent + '%</strong></div></div>' +
+      '<div class="person-streak"><span>Current streak</span><strong>' + stats.streak +
+      '</strong><small>session' + (stats.streak === 1 ? '' : 's') + '</small></div>' +
+      '<div class="person-latest"><span>Latest session</span><strong>' +
+      (latest ? latest.name : 'Nothing logged yet') + '</strong><small>' +
+      (latest ? shortDate(latest.date) : 'Your first green day starts here') + '</small></div></section>';
+  }
+
+  function renderMonthCalendar(firstDate, lastDate) {
+    var dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    var monthNames = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+      'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+    var offset = (firstDate.getDay() + 6) % 7;
+    var today = todayKey();
+    var html = '';
     var index;
-    for (index = 0; index < history.length && index < 5; index += 1) {
-      historyHtml += '<div class="history-row"><strong>' + history[index].name +
-        '</strong><span>' + history[index].date + '</span></div>';
+    var dayNumber;
+    var date;
+    var key;
+    var jordanStatus;
+    var kelseyStatus;
+    for (index = 0; index < dayLabels.length; index += 1) {
+      html += '<div class="calendar-weekday">' + dayLabels[index] + '</div>';
     }
-    if (!historyHtml) {
-      historyHtml = '<div class="empty">Complete a workout to begin your training history.</div>';
+    for (index = 0; index < 42; index += 1) {
+      dayNumber = index - offset + 1;
+      if (dayNumber < 1 || dayNumber > lastDate.getDate()) {
+        html += '<div class="calendar-day empty-day"></div>';
+      } else {
+        date = new Date(firstDate.getFullYear(), firstDate.getMonth(), dayNumber, 12, 0, 0, 0);
+        key = dateKey(date);
+        jordanStatus = calendarStatus('jordan', date);
+        kelseyStatus = calendarStatus('kelsey', date);
+        html += '<div class="calendar-day filled j-' + jordanStatus + ' k-' + kelseyStatus +
+          (key === today ? ' today' : '') + '" data-date="' + key + '" title="Jordan: ' +
+          calendarStatusLabel(jordanStatus) + ' · Kelsey: ' + calendarStatusLabel(kelseyStatus) +
+          '" style="background:linear-gradient(135deg,' + calendarStatusColor(jordanStatus) +
+          ' 0%,' + calendarStatusColor(jordanStatus) + ' 48%,#090c0a 49%,#090c0a 51%,' +
+          calendarStatusColor(kelseyStatus) + ' 52%,' + calendarStatusColor(kelseyStatus) +
+          ' 100%)"><span class="calendar-initial jordan-initial">J</span><b>' + dayNumber +
+          '</b><span class="calendar-initial kelsey-initial">K</span></div>';
+      }
     }
+    return '<section class="calendar-panel"><div class="calendar-head"><div><span>Together this month</span>' +
+      '<strong>' + monthNames[firstDate.getMonth()] + ' ' + firstDate.getFullYear() + '</strong></div>' +
+      '<div class="calendar-key"><i class="done"></i>Completed <i class="pushed"></i>Pushed ' +
+      '<i class="rest"></i>Rest <i class="scheduled"></i>Scheduled <i class="missed"></i>Missed</div></div>' +
+      '<div class="month-grid">' + html + '</div>' +
+      '<div class="calendar-foot"><span><b>J</b> Jordan · upper left</span>' +
+      '<span><b>K</b> Kelsey · lower right</span></div></section>';
+  }
+
+  function renderProgress() {
+    var now = trainingDate();
+    var firstDate = new Date(now.getFullYear(), now.getMonth(), 1, 12, 0, 0, 0);
+    var lastDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 12, 0, 0, 0);
+    renderProgressHeader();
     elements.content.innerHTML =
-      '<div class="view progress-view">' +
-      '<div class="view-head"><div><div class="view-label">' + profile.name + ' · This week</div>' +
-      '<div class="view-title">TRAINING OVERVIEW</div>' +
-      '<div class="view-subtitle">Consistency and recovery, without the noise.</div></div></div>' +
-      '<div class="progress-layout"><div class="progress-kpis">' +
-      '<div class="kpi"><div class="card-label">Weekly completion</div>' +
-      '<div class="kpi-value">' + percent + '%</div><div class="bar"><i style="width:' +
-      percent + '%"></i></div></div>' +
-      '<div class="kpi"><div class="card-label">HRV vs baseline</div><div class="kpi-value">' +
-      trendPercent(trends.hrv) + '</div></div>' +
-      '<div class="kpi"><div class="card-label">Recovery vs baseline</div><div class="kpi-value">' +
-      trendPercent(trends.recovery) + '</div></div></div>' +
-      '<div class="history-panel"><div class="card-label">Recent sessions</div>' +
-      '<div class="history">' + historyHtml + '</div></div></div></div>';
+      '<div class="view progress-view household-progress">' +
+      '<div class="view-head progress-head"><div><div class="view-label">Shared progress</div>' +
+      '<div class="view-title">YOUR MONTH, TOGETHER.</div>' +
+      '<div class="view-subtitle">Two routines. One honest view of the work getting done.</div></div></div>' +
+      '<div class="household-progress-layout">' +
+      progressPersonPanel('jordan', firstDate, lastDate) +
+      renderMonthCalendar(firstDate, lastDate) +
+      progressPersonPanel('kelsey', firstDate, lastDate) + '</div></div>';
     elements.controlHint.innerHTML =
-      '<span class="key">← →</span> Choose menu <span class="key">Enter</span> Open';
+      '<span class="key">↑</span> Menu <span class="key">Today</span> Daily plan';
   }
 
   function renderContent() {
@@ -1273,6 +1520,10 @@
   function updateWhoopFreshness() {
     var minutes;
     var updatedAt = whoopUpdatedAtByProfile[profileId];
+    if (view === 'progress') {
+      elements.whoopLive.textContent = 'HOUSEHOLD WHOOP · LIVE';
+      return;
+    }
     if (!updatedAt) return;
     minutes = Math.max(0, Math.floor((new Date().getTime() - updatedAt) / 60000));
     elements.whoopLive.textContent = profile.name.toUpperCase() + ' WHOOP · ' +
@@ -1292,8 +1543,12 @@
     var cycle;
     var sleep;
     var trends;
+    if (targetProfileId === profileId) whoopData = response;
+    if (view === 'progress') {
+      renderContent();
+      return;
+    }
     if (targetProfileId !== profileId) return;
-    whoopData = response;
     recovery = response.recovery && response.recovery.score ? response.recovery.score : {};
     cycle = response.cycle && response.cycle.score ? response.cycle.score : {};
     sleep = response.sleep && response.sleep.score ? response.sleep.score : {};
@@ -1316,6 +1571,14 @@
       '&time=' + new Date().getTime(), function (error, response, status) {
       if (error) {
         scheduleWhoopRetry(target);
+        if (view === 'progress') {
+          if (status === 401) {
+            whoopDataByProfile[target] = null;
+            whoopUpdatedAtByProfile[target] = 0;
+          }
+          renderContent();
+          return;
+        }
         if (target !== profileId) return;
         if (status === 401) {
           whoopData = null;

@@ -10,7 +10,17 @@ test('Workout Manager offers a person-scoped missed-workout catch-up action', as
   assert.match(source, /if \(state\.target === 'both'\)/);
   assert.match(source, /missed = clone\(resolvedPlan\(state\.target, yesterday\)\)/);
   assert.match(source, /setOverride\(state\.target, today, missed\)/);
+  assert.match(source, /recordReschedule\(state\.target, yesterday, today, missed\)/);
   assert.match(source, /without changing the permanent schedule/);
+});
+
+test('Workout Manager records pushed workouts for the shared progress calendar', async () => {
+  const source = await readFile(new URL('../manager.js', import.meta.url), 'utf8');
+
+  assert.match(source, /function recordReschedule\(profile, fromDate, toDate, plan\)/);
+  assert.match(source, /state\.config\.rescheduleEvents = events\.slice\(-180\)/);
+  assert.match(source, /recordReschedule\(profile, today, tomorrow, current\)/);
+  assert.match(source, /event\.fromDate >= mondayKey && event\.fromDate <= sundayKey/);
 });
 
 test('Workout Manager leads with a complete week and previews the rotating accessory', async () => {

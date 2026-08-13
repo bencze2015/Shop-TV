@@ -158,21 +158,62 @@
     .week-day b{display:block;margin-top:8px;color:#cbd2ce;font-size:12px}
     .week-day.selected b{color:#fff}
 
-    .progress-layout{flex:1;min-height:0;display:flex}
-    .progress-kpis{width:46%;margin-right:14px;display:flex;flex-wrap:wrap}
-    .kpi{width:50%;min-height:0;border:1px solid #222b27;background:#0d1210;padding:18px 20px}
-    .kpi:first-child{width:100%;border-radius:16px 16px 0 0}
-    .kpi:nth-child(2){border-radius:0 0 0 16px}
-    .kpi:nth-child(3){border-radius:0 0 16px 0}
-    .kpi-value{margin-top:10px;font-size:39px;font-weight:780;letter-spacing:-.05em}
-    .bar{height:5px;margin-top:13px;overflow:hidden;border-radius:8px;background:#27302c}
-    .bar i{display:block;height:100%;background:#a9ffcf}
-    .history-panel{width:54%;min-height:0;border:1px solid #222b27;border-radius:16px;background:#0d1210;padding:19px 21px;display:flex;flex-direction:column}
-    .history{flex:1;min-height:0;margin-top:10px;display:flex;flex-direction:column}
-    .history-row{flex:1;min-height:0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #222a26;color:#aab3ae;font-size:12px}
-    .history-row:last-child{border-bottom:0}
-    .history-row span{color:#66706b}
-    .empty{display:flex;align-items:center;height:100%;color:#69736e;font-size:12px}
+    .household-whoop .household-metric{padding-left:26px}
+    .household-metric:before{content:"";position:absolute;left:13px;top:15px;bottom:15px;width:3px;border-radius:3px;background:#65d995}
+    .household-metric.kelsey:before{background:#a991ff}
+    .metric-person{display:block;color:#dce3df;font-size:9px;font-weight:850;letter-spacing:.13em;text-transform:uppercase}
+    .household-metric .metric-label{display:block;margin-top:4px;font-size:8px}
+    .household-metric b{margin-top:4px}
+    .progress-head{margin-bottom:10px}
+    .household-progress-layout{flex:1;min-height:0;display:flex}
+    .person-progress{position:relative;flex:0 0 21%;min-width:0;overflow:hidden;border:1px solid #25302a;border-radius:16px;background:#0d1210;padding:16px;display:flex;flex-direction:column}
+    .person-progress:after{content:"";position:absolute;right:-65px;top:-72px;width:145px;height:145px;border:1px solid rgba(101,217,149,.11);border-radius:50%}
+    .jordan-progress{margin-right:12px}
+    .kelsey-progress{margin-left:12px}
+    .kelsey-progress:after{border-color:rgba(169,145,255,.14)}
+    .person-progress-head{position:relative;z-index:1;display:flex;align-items:center}
+    .person-avatar{flex:0 0 35px;width:35px;height:35px;margin-right:10px;border:1px solid #4b725e;border-radius:50%;background:#16231c;color:#a9ffcf;font-size:14px;font-weight:850;line-height:33px;text-align:center}
+    .kelsey-progress .person-avatar{border-color:#63558d;background:#211b31;color:#c1afff}
+    .person-progress-head span,.person-recovery span,.person-stat-grid span,.person-streak span,.person-latest span{display:block;color:#6f7974;font-size:8px;font-weight:850;letter-spacing:.13em;text-transform:uppercase}
+    .person-progress-head strong{display:block;margin-top:4px;color:#eef2ef;font-size:16px}
+    .person-recovery{position:relative;z-index:1;margin-top:13px;border-top:1px solid #242d29;border-bottom:1px solid #242d29;padding:11px 0}
+    .person-recovery strong{display:inline-block;margin-top:4px;color:#a9ffcf;font-size:30px;font-weight:790;letter-spacing:-.055em;line-height:1}
+    .kelsey-progress .person-recovery strong{color:#c1afff}
+    .person-recovery small{float:right;margin-top:15px;color:#818b86;font-size:9px;font-weight:750}
+    .person-stat-grid{display:flex;margin-top:11px}
+    .person-stat-grid>div{width:50%}
+    .person-stat-grid>div+div{border-left:1px solid #242d29;padding-left:11px}
+    .person-stat-grid strong{display:block;margin-top:6px;color:#e4e9e6;font-size:20px;letter-spacing:-.04em}
+    .person-stat-grid strong small{color:#68736d;font-size:11px}
+    .person-streak{display:flex;align-items:baseline;margin-top:12px;border-radius:10px;background:#111814;padding:10px 11px}
+    .person-streak span{flex:1}
+    .person-streak strong{color:#eef2ef;font-size:22px}
+    .person-streak small{margin-left:4px;color:#6f7974;font-size:8px;font-weight:800;text-transform:uppercase}
+    .person-latest{min-height:0;margin-top:auto;border-top:1px solid #242d29;padding-top:11px}
+    .person-latest strong{display:block;margin-top:6px;overflow:hidden;color:#dce2de;font-size:12px;text-overflow:ellipsis;white-space:nowrap}
+    .person-latest small{display:block;margin-top:5px;color:#707a75;font-size:9px}
+    .calendar-panel{flex:1;min-width:0;min-height:0;border:1px solid #29332e;border-radius:16px;background:#0c100f;padding:13px 14px 10px;display:flex;flex-direction:column}
+    .calendar-head{flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:8px}
+    .calendar-head span{display:block;color:#707a75;font-size:8px;font-weight:850;letter-spacing:.14em;text-transform:uppercase}
+    .calendar-head strong{display:block;margin-top:3px;font-size:19px;letter-spacing:.02em}
+    .calendar-key{color:#6d7772;font-size:7px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+    .calendar-key i{display:inline-block;width:6px;height:6px;margin:0 4px 0 8px;border-radius:50%;background:#171d1a}
+    .calendar-key i.done{background:#65d995}
+    .calendar-key i.pushed{background:#8064d9}
+    .calendar-key i.scheduled{background:#314b40}
+    .calendar-key i.missed{background:#713a43}
+    .month-grid{flex:1;min-height:0;display:flex;flex-wrap:wrap;align-content:stretch}
+    .calendar-weekday{width:14.285%;height:9%;display:flex;align-items:center;justify-content:center;color:#66706b;font-size:8px;font-weight:850;letter-spacing:.12em}
+    .calendar-day{position:relative;width:14.285%;height:15.166%;border-top:2px solid #0c100f;border-right:2px solid #0c100f;overflow:hidden}
+    .calendar-day.filled{box-shadow:inset 0 0 0 1px rgba(255,255,255,.025)}
+    .calendar-day.today{box-shadow:inset 0 0 0 2px #e9f0ec}
+    .calendar-day b{position:absolute;z-index:2;left:50%;top:50%;color:#e1e7e3;font-size:10px;font-weight:850;transform:translate(-50%,-50%);text-shadow:0 1px 4px rgba(0,0,0,.8)}
+    .calendar-initial{position:absolute;z-index:2;color:rgba(255,255,255,.72);font-size:6px;font-weight:900;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+    .jordan-initial{left:5px;top:4px}
+    .kelsey-initial{right:5px;bottom:4px}
+    .empty-day{background:#0a0e0c}
+    .calendar-foot{flex:0 0 auto;display:flex;justify-content:space-between;margin-top:6px;color:#5e6963;font-size:7px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+    .calendar-foot b{color:#dfe6e2}
 
     .footerbar{flex:0 0 28px;display:flex;align-items:flex-end;justify-content:space-between;margin-top:10px}
     .control-hint{color:#59635e;font-size:9px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}
@@ -220,18 +261,20 @@
       html,body{height:auto;overflow:auto}
       body{height:auto;min-height:100vh;padding:20px}
       .screen{height:auto;min-height:100vh}
-      .topbar,.training-layout,.ambient-layout,.rest-layout,.progress-layout{display:block}
+      .topbar,.training-layout,.ambient-layout,.rest-layout,.household-progress-layout{display:block}
       .toolbar{margin-top:16px;justify-content:flex-start;flex-wrap:wrap}
       .household{width:100%;margin:0 0 8px}
       .toolbar-group{margin:8px 8px 0 0}
       .whoop{height:auto;flex-wrap:wrap}
       .metric{min-width:50%;border-bottom:1px solid #202723}
       .workspace{overflow:visible}
-      .focus-card,.session-list,.rest-hero,.rest-side,.progress-kpis,.history-panel{width:100%;height:auto}
+      .focus-card,.session-list,.rest-hero,.rest-side,.person-progress,.calendar-panel{width:100%;height:auto}
       .ambient-plan,.ambient-panel{width:100%;height:auto}
       .ambient-plan{margin-right:0;margin-bottom:12px}
       .ambient-move{min-height:56px}
-      .focus-card,.rest-hero,.progress-kpis{margin:0 0 12px}
+      .focus-card,.rest-hero,.person-progress,.calendar-panel{margin:0 0 12px}
+      .person-progress{min-height:300px}
+      .month-grid{height:430px;flex:none}
       .focus-card{min-height:330px}
       .exercise{min-height:64px}
       .week-strip{overflow:auto}

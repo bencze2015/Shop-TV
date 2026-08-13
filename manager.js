@@ -139,6 +139,22 @@
     delete state.config.dateOverrides[key][profile];
     if (!Object.keys(state.config.dateOverrides[key]).length) delete state.config.dateOverrides[key];
   }
+  function recordReschedule(profile, fromDate, toDate, plan) {
+    var fromKey = dateKey(fromDate);
+    var toKey = dateKey(toDate);
+    var events = state.config.rescheduleEvents || [];
+    events = events.filter(function (event) {
+      return !(event.profile === profile && event.fromDate === fromKey && event.toDate === toKey);
+    });
+    events.push({
+      profile: profile,
+      fromDate: fromKey,
+      toDate: toKey,
+      planName: plan.name || 'Workout',
+      createdAt: new Date().toISOString()
+    });
+    state.config.rescheduleEvents = events.slice(-180);
+  }
   function scheduleOptions(selected) {
     return PLAN_NAMES.map(function (name) {
       return '<option value="' + name + '"' + (name === selected ? ' selected' : '') + '>' + name + '</option>';
@@ -292,6 +308,7 @@
       var current = clone(resolvedPlan(profile, today));
       var tomorrowPlan = clone(resolvedPlan(profile, tomorrow));
       if (!current.exercises.length) return;
+      recordReschedule(profile, today, tomorrow, current);
       setOverride(profile, today, { name: 'Rest', exercises: [] });
       setOverride(profile, tomorrow, current);
       if (tomorrowPlan.exercises.length) {
@@ -322,6 +339,7 @@
       showToast(state.defaults.profiles[state.target].name + ' had no workout yesterday');
       return;
     }
+    recordReschedule(state.target, yesterday, today, missed);
     setOverride(state.target, today, missed);
     saveConfig(missed.name + ' is ready today · TV updating now');
   }
@@ -336,6 +354,11 @@
         plans.push(clone(resolvedPlan(profile, cursor)));
         cursor = addDays(cursor, 1);
       }
+      for (var eventIndex = 0; eventIndex < plans.length - 1; eventIndex += 1) {
+        if (plans[eventIndex].exercises && plans[eventIndex].exercises.length) {
+          recordReschedule(profile, addDays(today, eventIndex), addDays(today, eventIndex + 1), plans[eventIndex]);
+        }
+      }
       setOverride(profile, today, { name: 'Rest', exercises: [] });
       for (var index = 1; index < plans.length; index += 1) {
         setOverride(profile, addDays(today, index), plans[index - 1]);
@@ -346,8 +369,13 @@
   function restoreWeek() {
     var today = trainingDate();
     var monday = addDays(today, -((today.getDay() + 6) % 7));
+    var sundayKey = dateKey(addDays(monday, 6));
+    var mondayKey = dateKey(monday);
     targets().forEach(function (profile) {
       for (var index = 0; index < 7; index += 1) deleteOverride(profile, dateKey(addDays(monday, index)));
+      state.config.rescheduleEvents = (state.config.rescheduleEvents || []).filter(function (event) {
+        return !(event.profile === profile && event.fromDate >= mondayKey && event.fromDate <= sundayKey);
+      });
     });
     saveConfig('Normal weekly schedule restored');
   }

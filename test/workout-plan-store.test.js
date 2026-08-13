@@ -48,14 +48,31 @@ test('workout plan storage starts empty and increments revisions on save', async
     dateOverrides: {
       '2026-08-11': { jordan: { name: 'Push', exercises: [exercise()] } },
     },
+    rescheduleEvents: [{
+      profile: 'jordan',
+      fromDate: '2026-08-10',
+      toDate: '2026-08-11',
+      planName: 'Push',
+      createdAt: '2026-08-10T20:00:00.000Z',
+    }],
   }, 0);
 
   assert.equal(saved.revision, 1);
   assert.equal(saved.sharedSchedule, false);
   assert.equal(saved.profileWeeks.jordan.Monday.name, 'Push');
   assert.equal(saved.dateOverrides['2026-08-11'].jordan.name, 'Push');
+  assert.equal(saved.rescheduleEvents[0].fromDate, '2026-08-10');
   assert.ok(saved.updatedAt);
   assert.deepEqual(await store.get(), saved);
+});
+
+test('workout plan storage validates durable reschedule history', () => {
+  assert.throws(() => normalizeWorkoutPlanConfig({
+    rescheduleEvents: [{ profile: 'someone', fromDate: '2026-08-10', toDate: '2026-08-11' }],
+  }), /invalid profile/);
+  assert.throws(() => normalizeWorkoutPlanConfig({
+    rescheduleEvents: [{ profile: 'jordan', fromDate: 'yesterday', toDate: '2026-08-11' }],
+  }), /invalid original date/);
 });
 
 test('workout plan storage rejects stale edits and TV-overflowing sessions', async () => {

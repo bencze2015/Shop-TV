@@ -67,6 +67,8 @@ test('desktop TV layout is locked to one viewport with flexible exercise rows', 
   assert.match(html, /\.exercise\.remote-focus\{[^}]*box-shadow:[^}]*#a9ffcf/);
   assert.match(html, /\.timer-value\{[^}]*color:#a9ffcf/);
   assert.match(html, /\.celebration\{[^}]*position:fixed;[^}]*top:0;right:0;bottom:0;left:0/);
+  assert.match(html, /\.household-progress-layout\{[^}]*flex:1;min-height:0;display:flex/);
+  assert.match(html, /\.month-grid\{[^}]*flex:1;min-height:0;display:flex;flex-wrap:wrap/);
   assert.match(html, /@media\(max-width:900px\)\{\s*html,body\{height:auto;overflow:auto\}/);
   assert.doesNotMatch(html, /max-width:(?:1000|1100|1420)px/);
 });
@@ -269,14 +271,102 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
   assert.match(elements.content.innerHTML, /Pull Session/);
 
   context.setView('progress');
-  assert.match(elements.content.innerHTML, /TRAINING OVERVIEW/);
-  assert.match(elements.content.innerHTML, /Weekly completion/);
-  assert.match(elements.content.innerHTML, /HRV vs baseline/);
+  assert.match(elements.content.innerHTML, /YOUR MONTH, TOGETHER/);
+  assert.match(elements.content.innerHTML, /Together this month/);
+  assert.match(elements.content.innerHTML, /Jordan/);
+  assert.match(elements.content.innerHTML, /Kelsey/);
+  assert.equal(elements.hello.textContent, 'HOUSEHOLD PROGRESS');
+  assert.equal(elements.planName.textContent, 'SHARED');
 
   assert.ok(requests.some((url) => url.startsWith('/workouts.json')));
   assert.ok(requests.some((url) => url.startsWith('/api/workout-plan')));
   assert.ok(requests.some((url) => url.includes('/api/whoop-data?profile=jordan')));
   assert.ok(requests.some((url) => url.includes('/api/whoop-data?profile=kelsey')));
+});
+
+test('shared progress calendar splits Jordan and Kelsey status for every day', async () => {
+  const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
+  const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
+  const elements = createElementMap();
+  const storage = new Map([
+    ['shopHistory:jordan', JSON.stringify([{ date: '2026-08-13', name: 'Pull' }])],
+    ['shopHistory:kelsey', JSON.stringify([{ date: '2026-08-12', name: 'Pull' }])],
+  ]);
+  const TestDate = mutableDate('2026-08-13T12:00:00-07:00');
+
+  class FakeXmlHttpRequest {
+    open(_method, url) { this.url = url; }
+    send() {
+      this.readyState = 4;
+      this.status = 200;
+      if (this.url.startsWith('/workouts.json')) {
+        this.responseText = JSON.stringify(workouts);
+      } else if (this.url.startsWith('/api/workout-plan')) {
+        this.responseText = JSON.stringify({
+          schemaVersion: 1,
+          revision: 9,
+          sharedSchedule: true,
+          profileWeeks: {},
+          dateOverrides: {
+            '2026-08-13': { jordan: workouts.profiles.jordan.week.Wednesday },
+          },
+          rescheduleEvents: [{
+            profile: 'jordan',
+            fromDate: '2026-08-12',
+            toDate: '2026-08-13',
+            planName: 'Pull',
+          }],
+        });
+      } else {
+        const isKelsey = this.url.includes('profile=kelsey');
+        this.responseText = JSON.stringify({
+          recovery: { score: {
+            recovery_score: isKelsey ? 71 : 82,
+            hrv_rmssd_milli: isKelsey ? 61 : 83,
+          } },
+          sleep: { score: { sleep_performance_percentage: isKelsey ? 88 : 96 } },
+          workouts: [],
+          trends: {},
+        });
+      }
+      this.onreadystatechange();
+    }
+  }
+
+  const context = {
+    console,
+    document: {
+      getElementById: (id) => elements[id],
+      addEventListener() {},
+    },
+    history: { replaceState() {} },
+    location: { search: '', pathname: '/' },
+    localStorage: {
+      getItem: (key) => storage.get(key) || null,
+      setItem: (key, value) => storage.set(key, value),
+    },
+    XMLHttpRequest: FakeXmlHttpRequest,
+    setInterval() {},
+    setTimeout() { return 1; },
+    clearTimeout() {},
+    Date: TestDate,
+  };
+  context.window = context;
+  vm.runInNewContext(source, context);
+  context.setView('progress');
+
+  assert.equal(elements.hello.textContent, 'HOUSEHOLD PROGRESS');
+  assert.equal(elements.whoopLive.textContent, 'HOUSEHOLD WHOOP · LIVE');
+  assert.match(elements.whoop.innerHTML, /Jordan/);
+  assert.match(elements.whoop.innerHTML, /Kelsey/);
+  assert.match(elements.content.innerHTML, /AUGUST 2026/);
+  assert.equal((elements.content.innerHTML.match(/class="calendar-day filled/g) || []).length, 31);
+  assert.match(elements.content.innerHTML, /class="calendar-day filled j-pushed k-done" data-date="2026-08-12"/);
+  assert.match(elements.content.innerHTML, /class="calendar-day filled j-done k-rest today" data-date="2026-08-13"/);
+  assert.match(elements.content.innerHTML, /Completed/);
+  assert.match(elements.content.innerHTML, /Pushed/);
+  assert.match(elements.content.innerHTML, /Consistency/);
+  assert.match(elements.content.innerHTML, /Latest session/);
 });
 
 test('five-way remote navigation, timer persistence, auto-advance, and undo work together', async () => {
