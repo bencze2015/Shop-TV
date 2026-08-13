@@ -6,7 +6,7 @@ import vm from 'node:vm';
 
 const elementIds = [
   'planName', 'hello', 'date', 'clock', 'preview', 'householdStatus', 'jordanBtn', 'kelseyBtn',
-  'whoopLive', 'todayTab', 'progressTab', 'whoop', 'content', 'controlHint', 'toast',
+  'whoopLive', 'progressTab', 'whoop', 'content', 'controlHint', 'toast',
   'celebration', 'celebrationSource', 'celebrationTitle', 'celebrationMeta'
 ];
 
@@ -273,12 +273,26 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
   assert.match(elements.content.innerHTML, /Pull Session/);
 
   context.setView('progress');
-  assert.match(elements.content.innerHTML, /YOUR MONTH, TOGETHER/);
+  assert.doesNotMatch(elements.content.innerHTML, /Shared progress|YOUR MONTH, TOGETHER|Two routines/);
   assert.match(elements.content.innerHTML, /Together this month/);
   assert.match(elements.content.innerHTML, /Jordan/);
   assert.match(elements.content.innerHTML, /Kelsey/);
   assert.equal(elements.hello.textContent, 'HOUSEHOLD PROGRESS');
   assert.equal(elements.planName.textContent, 'SHARED');
+  assert.match(elements.progressTab.className, /active/);
+  assert.doesNotMatch(elements.jordanBtn.className, /active/);
+  assert.doesNotMatch(elements.kelseyBtn.className, /active/);
+
+  context.setProfile('jordan');
+  assert.match(elements.content.innerHTML, /READY WHEN YOU ARE|WORKOUT COMPLETE/);
+  assert.match(elements.jordanBtn.className, /active/);
+  assert.doesNotMatch(elements.progressTab.className, /active/);
+
+  context.setView('progress');
+  context.setProfile('kelsey');
+  assert.match(elements.content.innerHTML, /READY WHEN YOU ARE|WORKOUT COMPLETE/);
+  assert.match(elements.kelseyBtn.className, /active/);
+  assert.doesNotMatch(elements.progressTab.className, /active/);
 
   assert.ok(requests.some((url) => url.startsWith('/workouts.json')));
   assert.ok(requests.some((url) => url.startsWith('/api/workout-plan')));
@@ -499,7 +513,7 @@ test('TV autopilot shows the remaining person, then returns to shared progress',
   context.dismissCelebration();
   context.runTvAutopilot(true);
   assert.equal(elements.hello.textContent, 'HOUSEHOLD PROGRESS');
-  assert.match(elements.content.innerHTML, /YOUR MONTH, TOGETHER/);
+  assert.doesNotMatch(elements.content.innerHTML, /Shared progress|YOUR MONTH, TOGETHER|Two routines/);
 });
 
 test('five-way remote navigation, timer persistence, auto-advance, and undo work together', async () => {
@@ -555,9 +569,9 @@ test('five-way remote navigation, timer persistence, auto-advance, and undo work
 
   assert.match(elements.content.innerHTML, /ambient-action primary remote-focus/);
   press('ArrowUp', 38);
-  assert.match(elements.todayTab.className, /remote-focus/);
+  assert.match(elements.jordanBtn.className, /remote-focus/);
   press('ArrowLeft', 37);
-  assert.match(elements.kelseyBtn.className, /remote-focus/);
+  assert.match(elements.progressTab.className, /remote-focus/);
   press('ArrowRight', 39);
   press('ArrowDown', 40);
   assert.match(elements.content.innerHTML, /ambient-action primary remote-focus/);
