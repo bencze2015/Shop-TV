@@ -46,6 +46,7 @@
   var toastTimeout = null;
   var celebrationTimeout = null;
   var celebrationVisible = false;
+  var remoteCompleteArmed = false;
   var activeTrainingDateKey = null;
 
   var elements = {
@@ -63,6 +64,8 @@
     content: byId('content'),
     controlHint: byId('controlHint'),
     toast: byId('toast'),
+    remoteConfirm: byId('remoteConfirm'),
+    remoteConfirmTitle: byId('remoteConfirmTitle'),
     celebration: byId('celebration'),
     celebrationSource: byId('celebrationSource'),
     celebrationTitle: byId('celebrationTitle'),
@@ -1023,6 +1026,7 @@
   function setProfile(id) {
     if (!data.profiles[id]) return;
     noteInteraction();
+    dismissRemoteCompletion();
     saveUiState();
     profileId = id;
     profile = data.profiles[id];
@@ -1484,6 +1488,13 @@
       '<span class="key">↑</span> Menu <span class="key">Today</span> Daily plan';
   }
 
+  function renderRemoteHint() {
+    if (view === 'today' && trackingMode === 'sets') return;
+    elements.controlHint.innerHTML =
+      '<span class="key">←</span> Jordan <span class="key">↑</span> Progress ' +
+      '<span class="key">→</span> Kelsey <span class="key">↓</span> Workout complete';
+  }
+
   function renderContent() {
     var plan;
     setClass(elements.hello, 'progress-welcome', view === 'progress');
@@ -1491,6 +1502,7 @@
     setClass(elements.progressTab, 'active', view === 'progress');
     if (view === 'progress') {
       renderProgress();
+      renderRemoteHint();
       return;
     }
     plan = planFor(selectedDay);
@@ -1499,6 +1511,7 @@
     } else {
       renderRest();
     }
+    renderRemoteHint();
   }
 
   function setTrackingMode(mode) {
@@ -1515,6 +1528,47 @@
     setClass(elements.celebration, 'visible', false);
     if (celebrationTimeout && window.clearTimeout) window.clearTimeout(celebrationTimeout);
     celebrationTimeout = null;
+  }
+
+  function dismissRemoteCompletion() {
+    remoteCompleteArmed = false;
+    setClass(elements.remoteConfirm, 'visible', false);
+  }
+
+  function armRemoteCompletion() {
+    var plan;
+    var state;
+    noteInteraction();
+    if (view !== 'today' || selectedDay !== trainingDayName()) {
+      view = 'today';
+      selectedDay = trainingDayName();
+      selectedExercise = 0;
+      trackingMode = 'ambient';
+      ambientAction = 0;
+      focusZone = 'ambient';
+      updateDayUrl(null);
+      saveUiState();
+      renderContent();
+    }
+    plan = planFor(selectedDay);
+    state = loadState();
+    if (!plan.exercises || !plan.exercises.length) {
+      showToast(profile.name + ' has no workout today');
+      return;
+    }
+    if (state.completed) {
+      showToast(profile.name + ' is already complete today');
+      return;
+    }
+    remoteCompleteArmed = true;
+    elements.remoteConfirmTitle.textContent = 'Complete ' + profile.name + '’s ' + plan.name + ' workout?';
+    setClass(elements.remoteConfirm, 'visible', true);
+  }
+
+  function confirmRemoteCompletion() {
+    if (!remoteCompleteArmed) return false;
+    dismissRemoteCompletion();
+    return completeWorkout('manual');
   }
 
   function inlineCompletionMode() {
@@ -1552,6 +1606,7 @@
     var index;
     var exercise;
     if (selectedDay !== trainingDayName()) return false;
+    dismissRemoteCompletion();
     plan = planFor(selectedDay);
     if (!plan.exercises || !plan.exercises.length) return false;
     state = loadState();
@@ -1933,6 +1988,7 @@
 
   function setView(newView) {
     noteInteraction();
+    dismissRemoteCompletion();
     view = newView === 'progress' ? 'progress' : 'today';
     focusZone = 'toolbar';
     toolbarIndex = view === 'progress' ? 2 : (profileId === 'jordan' ? 0 : 1);
@@ -2085,6 +2141,8 @@
   window.activateAmbientAction = activateAmbientAction;
   window.setTrackingMode = setTrackingMode;
   window.dismissCelebration = dismissCelebration;
+  window.armRemoteCompletion = armRemoteCompletion;
+  window.confirmRemoteCompletion = confirmRemoteCompletion;
   window.undoLastSet = undoLastSet;
   window.selectExercise = selectExercise;
   window.loadWorkoutPlan = loadWorkoutPlan;
@@ -2095,6 +2153,12 @@
       event.keyCode === 8 || event.keyCode === 27 || event.keyCode === 10009;
   }
 
+  function consumeRemoteEvent(event) {
+    if (event.preventDefault) event.preventDefault();
+    if (event.stopPropagation) event.stopPropagation();
+    event.returnValue = false;
+  }
+
   if (document.addEventListener) {
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) refreshDashboardData();
@@ -2103,40 +2167,76 @@
       var items;
       noteInteraction();
       if (isBackKey(event)) {
+        if (remoteCompleteArmed) {
+          dismissRemoteCompletion();
+          consumeRemoteEvent(event);
+          return;
+        }
         if (celebrationVisible) {
           dismissCelebration();
-          event.preventDefault();
+          consumeRemoteEvent(event);
           return;
         }
         if (lastAction && undoLastSet()) {
-          event.preventDefault();
+          consumeRemoteEvent(event);
           return;
         }
         if (trackingMode === 'sets' && focusZone === 'workout') {
           setTrackingMode('ambient');
-          event.preventDefault();
+          consumeRemoteEvent(event);
           return;
         }
         if (focusZone === 'toolbar') {
-          event.preventDefault();
+          consumeRemoteEvent(event);
           enterContentFocus();
         }
         return;
       }
+      if (remoteCompleteArmed) {
+        if (event.key === 'Enter' || event.keyCode === 13) confirmRemoteCompletion();
+        consumeRemoteEvent(event);
+        return;
+      }
+      if (trackingMode !== 'sets' || view !== 'today') {
+        if (event.key === 'ArrowLeft' || event.keyCode === 37) {
+          consumeRemoteEvent(event);
+          setProfile('jordan');
+          return;
+        }
+        if (event.key === 'ArrowRight' || event.keyCode === 39) {
+          consumeRemoteEvent(event);
+          setProfile('kelsey');
+          return;
+        }
+        if (event.key === 'ArrowUp' || event.keyCode === 38) {
+          consumeRemoteEvent(event);
+          setView('progress');
+          return;
+        }
+        if (event.key === 'ArrowDown' || event.keyCode === 40) {
+          consumeRemoteEvent(event);
+          armRemoteCompletion();
+          return;
+        }
+        if (event.key === 'Enter' || event.keyCode === 13) {
+          consumeRemoteEvent(event);
+          return;
+        }
+      }
       if (event.key === 'ArrowLeft' || event.keyCode === 37) {
-        event.preventDefault();
+        consumeRemoteEvent(event);
         if (focusZone === 'toolbar') moveToolbar(-1);
         else changeDay(-1);
         return;
       }
       if (event.key === 'ArrowRight' || event.keyCode === 39) {
-        event.preventDefault();
+        consumeRemoteEvent(event);
         if (focusZone === 'toolbar') moveToolbar(1);
         else changeDay(1);
         return;
       }
       if (event.key === 'ArrowDown' || event.keyCode === 40) {
-        event.preventDefault();
+        consumeRemoteEvent(event);
         if (focusZone === 'toolbar') {
           enterContentFocus();
           return;
@@ -2155,7 +2255,7 @@
         return;
       }
       if (event.key === 'ArrowUp' || event.keyCode === 38) {
-        event.preventDefault();
+        consumeRemoteEvent(event);
         if (focusZone === 'toolbar') return;
         if (view !== 'today' || focusZone === 'day' || focusZone === 'ambient') {
           focusZone = 'toolbar';
@@ -2176,7 +2276,7 @@
         return;
       }
       if (event.key === 'Enter' || event.keyCode === 13) {
-        event.preventDefault();
+        consumeRemoteEvent(event);
         if (celebrationVisible) {
           dismissCelebration();
           return;
@@ -2185,7 +2285,7 @@
         else if (focusZone === 'workout') completeSet();
         else if (focusZone === 'ambient') activateAmbientAction(ambientAction);
       }
-    });
+    }, true);
   }
 
   if (window.addEventListener) {

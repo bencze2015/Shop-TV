@@ -7,6 +7,7 @@ import vm from 'node:vm';
 const elementIds = [
   'planName', 'hello', 'date', 'clock', 'preview', 'householdStatus', 'jordanBtn', 'kelseyBtn',
   'whoopLive', 'progressTab', 'whoop', 'content', 'controlHint', 'toast',
+  'remoteConfirm', 'remoteConfirmTitle',
   'celebration', 'celebrationSource', 'celebrationTitle', 'celebrationMeta'
 ];
 
@@ -517,7 +518,7 @@ test('TV autopilot shows the remaining person, then returns to shared progress',
   assert.doesNotMatch(elements.content.innerHTML, /Shared progress|YOUR MONTH, TOGETHER|Two routines/);
 });
 
-test('five-way remote navigation, timer persistence, auto-advance, and undo work together', async () => {
+test('direct TV remote shortcuts, timer persistence, auto-advance, and undo work together', async () => {
   const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
   const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
   const elements = createElementMap();
@@ -569,16 +570,20 @@ test('five-way remote navigation, timer persistence, auto-advance, and undo work
   const press = (key, keyCode) => keydown({ key, keyCode, preventDefault() {} });
 
   assert.match(elements.content.innerHTML, /ambient-action primary remote-focus/);
-  press('ArrowUp', 38);
-  assert.match(elements.jordanBtn.className, /remote-focus/);
-  press('ArrowLeft', 37);
-  assert.match(elements.progressTab.className, /remote-focus/);
+  assert.match(elements.controlHint.innerHTML, /Jordan.*Progress.*Kelsey.*Workout complete/);
   press('ArrowRight', 39);
+  assert.equal(elements.hello.textContent, 'HELLO, KELSEY');
+  press('ArrowUp', 38);
+  assert.equal(elements.hello.textContent, 'HOUSEHOLD PROGRESS');
+  press('ArrowLeft', 37);
+  assert.equal(elements.hello.textContent, 'HELLO, JORDAN');
   press('ArrowDown', 40);
-  assert.match(elements.content.innerHTML, /ambient-action primary remote-focus/);
-  press('ArrowDown', 40);
-  assert.match(elements.content.innerHTML, /Track individual sets/);
-  press('Enter', 13);
+  assert.match(elements.remoteConfirm.className, /visible/);
+  assert.match(elements.remoteConfirmTitle.textContent, /Complete Jordan’s Push workout/);
+  press('Backspace', 8);
+  assert.doesNotMatch(elements.remoteConfirm.className, /visible/);
+
+  context.setTrackingMode('sets');
   assert.match(elements.content.innerHTML, /exercise selected remote-focus/);
 
   press('Enter', 13);
@@ -602,6 +607,14 @@ test('five-way remote navigation, timer persistence, auto-advance, and undo work
   assert.match(elements.content.innerHTML, /2<\/strong><span>of 3 sets complete/);
   assert.doesNotMatch(elements.content.innerHTML, /Rest timer/);
   assert.match(elements.toast.className, /visible/);
+
+  press('Backspace', 8);
+  press('ArrowDown', 40);
+  assert.match(elements.remoteConfirm.className, /visible/);
+  press('Enter', 13);
+  const completed = JSON.parse(storage.get([...storage.keys()].find((key) => key.startsWith('shopWorkout:jordan:'))));
+  assert.equal(completed.completed, true);
+  assert.doesNotMatch(elements.remoteConfirm.className, /visible/);
 
   assert.ok(intervals.length >= 3);
 });

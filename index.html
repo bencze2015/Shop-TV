@@ -233,13 +233,20 @@
     .calendar-foot b{color:#dfe6e2}
 
     .footerbar{flex:0 0 28px;display:flex;align-items:flex-end;justify-content:space-between;margin-top:10px}
-    .control-hint{color:#59635e;font-size:9px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}
-    .key{display:inline-block;margin:0 4px;border:1px solid #303a35;border-radius:5px;padding:3px 6px;color:#98a29d}
+    .control-hint{color:#77817c;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
+    .key{display:inline-block;margin:0 5px;border:1px solid #3d4a44;border-radius:6px;padding:4px 8px;background:#101613;color:#dce5e0}
     .day-nav{display:flex}
     .day-nav button{margin-left:5px;border:1px solid #27312c;border-radius:7px;background:#0d1210;color:#7f8984;padding:6px 9px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
     .day-nav button.today{color:#dfe6e2;border-color:#3b4942}
     .toast{position:fixed;z-index:20;left:50%;bottom:48px;display:none;min-width:280px;padding:11px 16px;border:1px solid #46564e;border-radius:999px;background:#121915;color:#dfe7e2;font-size:10px;font-weight:850;letter-spacing:.1em;text-align:center;text-transform:uppercase;transform:translateX(-50%);box-shadow:0 12px 40px rgba(0,0,0,.45)}
     .toast.visible{display:block}
+    .remote-confirm{position:fixed;z-index:90;top:0;right:0;bottom:0;left:0;display:none;align-items:center;justify-content:center;background:rgba(4,8,6,.88);text-align:center}
+    .remote-confirm.visible{display:flex}
+    .remote-confirm-card{width:560px;max-width:80%;border:1px solid #557161;border-radius:22px;background:#101713;padding:38px 44px;box-shadow:0 28px 90px rgba(0,0,0,.7)}
+    .remote-confirm-label{color:#a9ffcf;font-size:11px;font-weight:850;letter-spacing:.22em;text-transform:uppercase}
+    .remote-confirm-title{margin-top:14px;color:#f2f6f3;font-size:38px;font-weight:800;letter-spacing:-.045em;line-height:1.02}
+    .remote-confirm-copy{margin-top:14px;color:#8f9a94;font-size:13px;line-height:1.45}
+    .remote-confirm-actions{margin-top:28px;color:#aab4af;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
     .celebration{position:fixed;z-index:100;top:0;right:0;bottom:0;left:0;display:none;align-items:center;justify-content:center;background:#07100b;background:radial-gradient(circle at 50% 40%,#254a35 0,#10241a 34%,#070b09 72%);text-align:center;cursor:pointer}
     .celebration.visible{display:flex}
     .celebration-inner{position:relative;padding:40px}
@@ -335,6 +342,14 @@
     </footer>
   </main>
   <div class="toast" id="toast"></div>
+  <div class="remote-confirm" id="remoteConfirm">
+    <div class="remote-confirm-card">
+      <div class="remote-confirm-label">Confirm workout</div>
+      <div class="remote-confirm-title" id="remoteConfirmTitle">Complete today’s workout?</div>
+      <div class="remote-confirm-copy">This marks the workout complete everywhere.</div>
+      <div class="remote-confirm-actions"><span class="key">Select</span> Confirm <span class="key">Back</span> Cancel</div>
+    </div>
+  </div>
   <div class="celebration" id="celebration" onclick="dismissCelebration()">
     <div class="celebration-inner">
       <div class="celebration-mark">✓</div>
