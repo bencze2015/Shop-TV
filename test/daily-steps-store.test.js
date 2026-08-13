@@ -38,6 +38,29 @@ test('daily steps overwrite the same person and date with the latest total', asy
   assert.equal(result.profiles.jordan[0].met, true);
 });
 
+test('daily step sync saves a month in one Redis write', async () => {
+  let writes = 0;
+  const redis = memoryRedis();
+  const originalHset = redis.hset;
+  redis.hset = async (...args) => { writes += 1; return originalHset(...args); };
+  const store = createDailyStepsStore(redis, 'test:steps');
+  const entries = await store.saveMany([
+    { profile: 'jordan', date: '2026-08-12', steps: 11000 },
+    { profile: 'jordan', date: '2026-08-13', steps: 13000 },
+  ]);
+
+  assert.equal(entries.length, 2);
+  assert.equal(writes, 1);
+  assert.equal((await store.list()).profiles.jordan.length, 2);
+});
+
+test('daily step sync rejects oversized batches', async () => {
+  const store = createDailyStepsStore(memoryRedis(), 'test:steps');
+  await assert.rejects(() => store.saveMany(new Array(46).fill({
+    profile: 'jordan', date: '2026-08-13', steps: 1,
+  })), /between 1 and 45/);
+});
+
 test('daily steps reject malformed totals', () => {
   assert.throws(() => normalizeDailySteps({
     profile: 'jordan',
