@@ -9,7 +9,8 @@
     token: '',
     defaults: null,
     config: null,
-    target: 'both',
+    target: 'jordan',
+    weekOffset: 0,
     exerciseProfile: 'jordan',
     exercisePlan: 'Push'
   };
@@ -27,6 +28,12 @@
     var next = new Date(date.getTime());
     next.setDate(next.getDate() + amount);
     return next;
+  }
+  function mondayFor(date) {
+    var monday = new Date(date.getTime());
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    monday.setHours(12, 0, 0, 0);
+    return monday;
   }
   function trainingDate() {
     var date = new Date();
@@ -99,11 +106,28 @@
     }
     return { name: name, exercises: [] };
   }
+  function rotatedPlan(plan, date) {
+    var rotation = state.defaults.accessoryRotation;
+    var startsOn;
+    var weekNumber;
+    var cycle;
+    var result;
+    if (!rotation || !rotation.cycleWeeks || !rotation.cycleWeeks.length || !plan.exercises || plan.exercises.length < 3) {
+      return clone(plan);
+    }
+    startsOn = dateFromKey(rotation.startsOn);
+    weekNumber = Math.floor((mondayFor(date).getTime() - mondayFor(startsOn).getTime()) / (7 * 24 * 60 * 60 * 1000));
+    if (weekNumber < 0) return clone(plan);
+    cycle = rotation.cycleWeeks[weekNumber % rotation.cycleWeeks.length];
+    result = clone(plan);
+    if (cycle[plan.name]) result.exercises[2] = clone(cycle[plan.name]);
+    return result;
+  }
   function resolvedPlan(profile, date) {
     var key = dateKey(date);
     var exception = state.config.dateOverrides[key];
     if (exception && exception[profile]) return exception[profile];
-    return effectiveWeek(profile)[dayName(date)];
+    return rotatedPlan(effectiveWeek(profile)[dayName(date)], date);
   }
   function setOverride(profile, date, plan) {
     var key = dateKey(date);
@@ -136,6 +160,40 @@
   function selectedWeekPlan(day) {
     var list = targets().map(function (profile) { return effectiveWeek(profile)[day].name; });
     return list.every(function (name) { return name === list[0]; }) ? list[0] : 'Mixed';
+  }
+  function shortDate(date) {
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+  function exerciseSummary(plan) {
+    return plan.exercises.map(function (exercise, index) {
+      return '<span class="movement ' + (index === 2 && (plan.name === 'Push' || plan.name === 'Pull') ? 'rotating' : '') + '">' +
+        escapeHtml(exercise.name) + (index === 2 && (plan.name === 'Push' || plan.name === 'Pull') ? '<i>rotates</i>' : '') + '</span>';
+    }).join('');
+  }
+  function renderProjectionPlan(profile, date) {
+    var plan = resolvedPlan(profile, date);
+    var person = state.target === 'both' ? '<span class="person">' + state.defaults.profiles[profile].name + '</span>' : '';
+    if (!plan.exercises.length) {
+      return '<div class="projection-plan rest">' + person + '<span class="plan-pill">Rest</span></div>';
+    }
+    return '<div class="projection-plan">' + person + '<span class="plan-pill ' + plan.name.toLowerCase() + '">' + escapeHtml(plan.name) + '</span>' +
+      '<div class="movement-list">' + exerciseSummary(plan) + '</div></div>';
+  }
+  function renderWeekProjection(today) {
+    var monday = addDays(mondayFor(today), state.weekOffset * 7);
+    var sunday = addDays(monday, 6);
+    var rows = DAYS.map(function (day, index) {
+      var date = addDays(monday, index);
+      var isToday = dateKey(date) === dateKey(today);
+      return '<div class="projection-day ' + (isToday ? 'today' : '') + '"><div class="day-stamp"><strong>' +
+        (isToday ? 'Today' : day.slice(0, 3)) + '</strong><span>' + shortDate(date) + '</span></div><div class="day-plans">' +
+        targets().map(function (profile) { return renderProjectionPlan(profile, date); }).join('') + '</div></div>';
+    }).join('');
+    return '<section class="card schedule-card"><div class="section-head schedule-head"><div><div class="eyebrow">Your plan</div><h2>' +
+      (state.weekOffset ? 'Next week' : 'This week') + '</h2><p class="sub">' + shortDate(monday) + ' — ' + shortDate(sunday) +
+      '</p></div><div class="week-switch"><button data-week-offset="0" class="' + (!state.weekOffset ? 'active' : '') + '">This week</button>' +
+      '<button data-week-offset="1" class="' + (state.weekOffset ? 'active' : '') + '">Next week</button></div></div>' +
+      '<div class="projection">' + rows + '</div><p class="rotation-note"><span>↻</span> The first two movements stay consistent. The third Push and Pull movement alternates weekly.</p></section>';
   }
   function renderExerciseEditor() {
     var plan = planTemplate(state.exerciseProfile, state.exercisePlan);
@@ -178,14 +236,14 @@
     }).join(' · ');
     app.style.display = 'block';
     lock.style.display = 'none';
-    app.innerHTML = '<header class="top"><div><div class="eyebrow">Shop training</div><h1>Workout Manager</h1></div>' +
+    app.innerHTML = '<header class="top"><div><div class="eyebrow">Shop training</div><h1>Plan the week.</h1><p class="top-sub">See it. Adjust it. Then let the TV run the workout.</p></div>' +
       '<div class="sync"><b>TV live</b><span id="syncLabel">' + syncLabel() + '</span></div></header>' +
-      '<section class="card"><div class="section-head"><div><h2>Who are you changing?</h2><p class="sub">' + escapeHtml(todayPlans) + '</p></div></div>' +
+      '<section class="profile-card"><div><strong>Viewing</strong><span>' + escapeHtml(todayPlans) + '</span></div>' +
       '<div class="segments">' + ['jordan', 'kelsey', 'both'].map(function (target) {
         var label = target === 'both' ? 'Both' : state.defaults.profiles[target].name;
         return '<button data-target="' + target + '" class="' + (state.target === target ? 'active' : '') + '">' + label + '</button>';
-      }).join('') + '</div></section>' +
-      '<section class="card"><div class="section-head"><div><h2>Change this week</h2><p class="sub">One tap. The TV notices within 30 seconds.</p></div></div>' +
+      }).join('') + '</div></section>' + renderWeekProjection(today) +
+      '<section class="card"><div class="section-head"><div><div class="eyebrow">Quick changes</div><h2>Adjust the plan</h2><p class="sub">One tap. The TV notices within 30 seconds.</p></div></div>' +
       '<div class="quick-grid"><button class="action primary wide" data-action="catch-up"><strong>' + catchUpLabel() + '</strong><span>' +
       (state.target === 'both'
         ? 'Choose Jordan or Kelsey first so a completed workout is never moved for the other person.'
@@ -194,7 +252,7 @@
       '<button class="action" data-action="defer"><strong>Move today → tomorrow</strong><span>Keeps today as rest and preserves the next workout.</span></button>' +
       '<button class="action" data-action="shift"><strong>Shift remaining week</strong><span>Moves every remaining session forward one day.</span></button>' +
       '<button class="action wide" data-action="restore"><strong>Restore normal schedule</strong><span>Removes this week’s exceptions for ' + targetLabel() + '.</span></button></div></section>' +
-      '<section class="card"><div class="section-head"><div><h2>Normal weekly schedule</h2><p class="sub">Permanent until you change it again.</p></div></div>' +
+      '<section class="card"><div class="section-head"><div><div class="eyebrow">Foundation</div><h2>Normal weekly schedule</h2><p class="sub">Permanent until you change it again.</p></div></div>' +
       '<div class="toggle-row"><div><strong>Shared weekly rhythm</strong><span>Permanent day changes stay aligned for both people.</span></div>' +
       '<button class="switch ' + (state.config.sharedSchedule ? 'on' : '') + '" data-action="toggle-shared" aria-label="Toggle shared schedule"></button></div>' +
       '<div class="week">' + DAYS.map(function (day) {
@@ -202,8 +260,8 @@
         return '<div class="day-row"><label>' + day + '</label><select data-week-day="' + day + '">' +
           (selected === 'Mixed' ? '<option selected disabled>Mixed</option>' : '') + scheduleOptions(selected) + '</select></div>';
       }).join('') + '</div></section>' +
-      '<section class="card"><div class="section-head"><div><h2>Exercises</h2><p class="sub">Add, remove, reorder, and edit what appears on the TV.</p></div></div>' + renderExerciseEditor() + '</section>' +
-      '<section class="card"><div class="section-head"><div><h2>Special date</h2><p class="sub">Override one date without changing the normal week.</p></div></div>' +
+      '<section class="card"><div class="section-head"><div><div class="eyebrow">Movements</div><h2>Exercise library</h2><p class="sub">The first two stay fixed. Position three rotates automatically on Push and Pull days.</p></div></div>' + renderExerciseEditor() + '</section>' +
+      '<section class="card"><div class="section-head"><div><div class="eyebrow">Exception</div><h2>Special date</h2><p class="sub">Override one date without changing the normal week.</p></div></div>' +
       '<div class="exception-grid"><input id="exceptionDate" type="date" value="' + dateKey(today) + '"><select id="exceptionPlan">' + scheduleOptions('Rest') + '</select>' +
       '<button class="save" data-action="save-exception">Set for ' + targetLabel() + '</button></div><div class="exceptions">' + renderExceptions() + '</div></section>';
   }
@@ -343,11 +401,13 @@
   }
   function handleClick(event) {
     var targetButton = event.target.closest('[data-target]');
+    var weekButton = event.target.closest('[data-week-offset]');
     var profileEditor = event.target.closest('[data-profile-editor]');
     var planEditor = event.target.closest('[data-plan-editor]');
     var exceptionButton = event.target.closest('[data-remove-exception]');
     var actionButton = event.target.closest('[data-action]');
     if (targetButton) { state.target = targetButton.dataset.target; render(); return; }
+    if (weekButton) { state.weekOffset = Number(weekButton.dataset.weekOffset); render(); return; }
     if (profileEditor) { state.exerciseProfile = profileEditor.dataset.profileEditor; render(); return; }
     if (planEditor) { state.exercisePlan = planEditor.dataset.planEditor; render(); return; }
     if (exceptionButton) {

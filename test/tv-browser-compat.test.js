@@ -110,6 +110,60 @@ test('the shared training week starts with Push on Monday', async () => {
   }
 });
 
+test('the third Push and Pull movements alternate while the first two stay anchored', async () => {
+  const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
+  const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
+  const elements = createElementMap();
+  const TestDate = mutableDate('2026-08-19T12:00:00-07:00');
+
+  class FakeXmlHttpRequest {
+    open(_method, url) { this.url = url; }
+    send() {
+      this.readyState = 4;
+      this.status = 200;
+      if (this.url.startsWith('/workouts.json')) this.responseText = JSON.stringify(workouts);
+      else if (this.url.startsWith('/api/workout-plan')) {
+        this.responseText = JSON.stringify({
+          schemaVersion: 1,
+          revision: 0,
+          sharedSchedule: true,
+          profileWeeks: {},
+          dateOverrides: {}
+        });
+      } else this.responseText = JSON.stringify({ workouts: [], trends: {} });
+      this.onreadystatechange();
+    }
+  }
+
+  const context = {
+    console,
+    document: {
+      getElementById: (id) => elements[id],
+      addEventListener() {}
+    },
+    history: { replaceState() {} },
+    location: { search: '', pathname: '/' },
+    localStorage: { getItem() { return null; }, setItem() {} },
+    XMLHttpRequest: FakeXmlHttpRequest,
+    setInterval() {},
+    setTimeout() { return 1; },
+    clearTimeout() {},
+    Date: TestDate
+  };
+  context.window = context;
+  vm.runInNewContext(source, context);
+
+  assert.match(elements.content.innerHTML, /Pull-Ups/);
+  assert.match(elements.content.innerHTML, /One-Arm Dumbbell Row/);
+  assert.match(elements.content.innerHTML, /Dumbbell Hammer Curl/);
+  assert.doesNotMatch(elements.content.innerHTML, />Dumbbell Curl</);
+
+  context.setDay('Monday');
+  assert.match(elements.content.innerHTML, /Dumbbell Bench Press/);
+  assert.match(elements.content.innerHTML, /Incline Dumbbell Press/);
+  assert.match(elements.content.innerHTML, /Band Triceps Extension/);
+});
+
 test('TV client renders training, rest, progress, WHOOP, and set completion flows', async () => {
   const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
   const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));

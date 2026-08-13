@@ -130,6 +130,41 @@
     return result;
   }
 
+  function mondayFor(date) {
+    var monday = new Date(date.getTime());
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    monday.setHours(12, 0, 0, 0);
+    return monday;
+  }
+
+  function applyAccessoryRotation(referenceDate) {
+    var rotation = data.accessoryRotation;
+    var startsOn;
+    var weekNumber;
+    var cycle;
+    var targetProfileId;
+    var day;
+    var plan;
+    var accessory;
+    if (!rotation || !rotation.cycleWeeks || !rotation.cycleWeeks.length) return;
+    startsOn = dateFromKey(rotation.startsOn);
+    if (!startsOn) return;
+    weekNumber = Math.floor((mondayFor(referenceDate).getTime() - mondayFor(startsOn).getTime()) / (7 * 24 * 60 * 60 * 1000));
+    if (weekNumber < 0) return;
+    cycle = rotation.cycleWeeks[weekNumber % rotation.cycleWeeks.length];
+    for (targetProfileId in data.profiles) {
+      if (!data.profiles.hasOwnProperty(targetProfileId)) continue;
+      for (day in data.profiles[targetProfileId].week) {
+        if (!data.profiles[targetProfileId].week.hasOwnProperty(day)) continue;
+        plan = data.profiles[targetProfileId].week[day];
+        accessory = cycle[plan.name];
+        if (accessory && plan.exercises && plan.exercises.length >= 3) {
+          plan.exercises[2] = cloneJson(accessory);
+        }
+      }
+    }
+  }
+
   function applyWorkoutPlanConfig(config) {
     var current;
     var monday;
@@ -153,6 +188,7 @@
     }
     current = trainingDate();
     current.setHours(12, 0, 0, 0);
+    applyAccessoryRotation(current);
     monday = addDateDays(current, -((current.getDay() + 6) % 7));
     sunday = addDateDays(monday, 6);
     overrides = config.dateOverrides || {};
@@ -1425,6 +1461,7 @@
       }
       baseData = response;
       data = cloneJson(baseData);
+      applyAccessoryRotation(trainingDate());
       if (!data.profiles || !data.profiles[profileId]) profileId = 'jordan';
       profile = data.profiles[profileId];
       activeTrainingDateKey = todayKey();

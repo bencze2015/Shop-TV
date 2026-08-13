@@ -1,5 +1,18 @@
 {
   "programName": "Shop Training",
+  "accessoryRotation": {
+    "startsOn": "2026-08-10",
+    "cycleWeeks": [
+      {
+        "Push": {"id":"db-lateral-raise","name":"Dumbbell Lateral Raise","sets":3,"reps":"12–15","restSeconds":60},
+        "Pull": {"id":"db-curl","name":"Dumbbell Curl","sets":3,"reps":"8–12","restSeconds":60}
+      },
+      {
+        "Push": {"id":"band-triceps-extension","name":"Band Triceps Extension","sets":3,"reps":"12–15","restSeconds":60},
+        "Pull": {"id":"db-hammer-curl","name":"Dumbbell Hammer Curl","sets":3,"reps":"8–12","restSeconds":60}
+      }
+    ]
+  },
   "profiles": {
     "jordan": {
       "name": "Jordan",
