@@ -232,10 +232,18 @@
     .calendar-foot{flex:0 0 auto;display:flex;justify-content:space-between;margin-top:6px;color:#5e6963;font-size:7px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
     .calendar-foot b{color:#dfe6e2}
 
-    .footerbar{flex:0 0 28px;display:flex;align-items:flex-end;justify-content:space-between;margin-top:10px}
+    .footerbar{flex:0 0 52px;display:flex;align-items:stretch;justify-content:space-between;margin-top:8px}
     .control-hint{color:#77817c;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
+    .remote-dock{display:flex;flex:1;min-width:0;border:1px solid #29352f;border-radius:12px;overflow:hidden;background:#0b100d}
+    .remote-command{position:relative;flex:1;min-width:0;border:0;border-right:1px solid #29352f;background:#0e1511;color:#aab4af;font-family:inherit;font-size:12px;font-weight:850;letter-spacing:.055em;text-transform:uppercase;cursor:pointer}
+    .remote-command:last-child{border-right:0}
+    .remote-command:hover,.remote-command:focus,.remote-command.active{z-index:1;outline:2px solid #a9ffcf;outline-offset:-2px;background:#17221c;color:#f1f6f3}
+    .remote-command.complete{color:#bfffdc;background:#102019}
+    .remote-command strong{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;margin-right:8px;border:1px solid #405047;border-radius:8px;background:#172019;color:#f1f6f3;font-size:13px;letter-spacing:0}
+    .remote-command .remote-color{width:8px;min-width:8px;height:8px;margin:0 7px 0 0;border:0;border-radius:50%;padding:0}
+    .remote-command .red{background:#db5d65}.remote-command .green{background:#66d594}.remote-command .yellow{background:#e2c75d}.remote-command .blue{background:#5e8fda}
     .key{display:inline-block;margin:0 5px;border:1px solid #3d4a44;border-radius:6px;padding:4px 8px;background:#101613;color:#dce5e0}
-    .day-nav{display:flex}
+    .day-nav{display:none}
     .day-nav button{margin-left:5px;border:1px solid #27312c;border-radius:7px;background:#0d1210;color:#7f8984;padding:6px 9px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
     .day-nav button.today{color:#dfe6e2;border-color:#3b4942}
     .toast{position:fixed;z-index:20;left:50%;bottom:48px;display:none;min-width:280px;padding:11px 16px;border:1px solid #46564e;border-radius:999px;background:#121915;color:#dfe7e2;font-size:10px;font-weight:850;letter-spacing:.1em;text-align:center;text-transform:uppercase;transform:translateX(-50%);box-shadow:0 12px 40px rgba(0,0,0,.45)}
@@ -247,6 +255,10 @@
     .remote-confirm-title{margin-top:14px;color:#f2f6f3;font-size:38px;font-weight:800;letter-spacing:-.045em;line-height:1.02}
     .remote-confirm-copy{margin-top:14px;color:#8f9a94;font-size:13px;line-height:1.45}
     .remote-confirm-actions{margin-top:28px;color:#aab4af;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+    .remote-confirm-buttons{display:flex;margin-top:24px;gap:10px}
+    .remote-confirm-button{flex:1;min-height:58px;border:1px solid #425047;border-radius:11px;background:#18201c;color:#aab4af;font-family:inherit;font-size:12px;font-weight:850;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+    .remote-confirm-button.confirm{border-color:#76c99a;background:#173223;color:#c9ffe0}
+    .remote-confirm-button:hover,.remote-confirm-button:focus{outline:2px solid #a9ffcf;outline-offset:2px;color:#fff}
     .celebration{position:fixed;z-index:100;top:0;right:0;bottom:0;left:0;display:none;align-items:center;justify-content:center;background:#07100b;background:radial-gradient(circle at 50% 40%,#254a35 0,#10241a 34%,#070b09 72%);text-align:center;cursor:pointer}
     .celebration.visible{display:flex}
     .celebration-inner{position:relative;padding:40px}
@@ -333,7 +345,7 @@
     <section class="workspace" id="content"></section>
 
     <footer class="footerbar">
-      <div class="control-hint" id="controlHint"><span class="key">↑ ↓</span> Select <span class="key">Enter</span> Complete set</div>
+      <div class="control-hint remote-dock" id="controlHint"></div>
       <div class="day-nav">
         <button onclick="changeDay(-1)">‹ Day</button>
         <button class="today" onclick="useToday()">Today</button>
@@ -347,7 +359,11 @@
       <div class="remote-confirm-label">Confirm workout</div>
       <div class="remote-confirm-title" id="remoteConfirmTitle">Complete today’s workout?</div>
       <div class="remote-confirm-copy">This marks the workout complete everywhere.</div>
-      <div class="remote-confirm-actions"><span class="key">Select</span> Confirm <span class="key">Back</span> Cancel</div>
+      <div class="remote-confirm-actions"><span class="key">0 / Blue</span> Confirm again <span class="key">Back</span> Cancel</div>
+      <div class="remote-confirm-buttons">
+        <button class="remote-confirm-button confirm" onclick="confirmRemoteCompletion()">Confirm complete</button>
+        <button class="remote-confirm-button" onclick="dismissRemoteCompletion()">Cancel</button>
+      </div>
     </div>
   </div>
   <div class="celebration" id="celebration" onclick="dismissCelebration()">
