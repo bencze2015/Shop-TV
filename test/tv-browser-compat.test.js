@@ -288,10 +288,7 @@ test('shared progress calendar splits Jordan and Kelsey status for every day', a
   const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
   const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
   const elements = createElementMap();
-  const storage = new Map([
-    ['shopHistory:jordan', JSON.stringify([{ date: '2026-08-13', name: 'Pull' }])],
-    ['shopHistory:kelsey', JSON.stringify([{ date: '2026-08-12', name: 'Pull' }])],
-  ]);
+  const storage = new Map();
   const TestDate = mutableDate('2026-08-13T12:00:00-07:00');
 
   class FakeXmlHttpRequest {
@@ -316,6 +313,13 @@ test('shared progress calendar splits Jordan and Kelsey status for every day', a
             toDate: '2026-08-13',
             planName: 'Pull',
           }],
+        });
+      } else if (this.url.startsWith('/api/workout-history')) {
+        this.responseText = JSON.stringify({
+          profiles: {
+            jordan: [{ date: '2026-08-13', planName: 'Pull', completionSource: 'manual' }],
+            kelsey: [{ date: '2026-08-12', planName: 'Pull', completionSource: 'manual' }],
+          },
         });
       } else {
         const isKelsey = this.url.includes('profile=kelsey');
@@ -363,6 +367,8 @@ test('shared progress calendar splits Jordan and Kelsey status for every day', a
   assert.equal((elements.content.innerHTML.match(/class="calendar-day filled/g) || []).length, 31);
   assert.match(elements.content.innerHTML, /class="calendar-day filled j-pushed k-done" data-date="2026-08-12"/);
   assert.match(elements.content.innerHTML, /class="calendar-day filled j-done k-rest today" data-date="2026-08-13"/);
+  assert.match(elements.content.innerHTML, /class="calendar-day filled j-scheduled k-scheduled" data-date="2026-08-14"[^>]+#292e2b/);
+  assert.doesNotMatch(elements.content.innerHTML, /j-scheduled[^>]+#65d995/);
   assert.match(elements.content.innerHTML, /Completed/);
   assert.match(elements.content.innerHTML, /Pushed/);
   assert.match(elements.content.innerHTML, /Consistency/);
