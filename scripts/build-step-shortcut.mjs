@@ -100,6 +100,11 @@ const plist = `<?xml version="1.0" encoding="UTF-8"?>
                 <key>Removable</key><false/><key>Property</key><string>Start Date</string>
                 <key>Bounded</key><true/><key>Unit</key><integer>16</integer><key>Operator</key><integer>1002</integer>
               </dict>
+              <dict>
+                <key>Enumeration</key><string>WHOOP</string><key>Operator</key><integer>4</integer>
+                <key>Property</key><string>Source</string><key>Removable</key><true/>
+                <key>Unit</key><integer>4</integer><key>VariableOverrides</key><dict></dict>
+              </dict>
             </array>
           </dict>
           <key>WFSerializationType</key><string>WFContentPredicateTableTemplate</string>
@@ -120,7 +125,7 @@ const plist = `<?xml version="1.0" encoding="UTF-8"?>
         <key>WFJSONValues</key>${fields([
           variableField('dates', outputVariable(dateUUID, 'Formatted Date')),
           variableField('values', outputVariable(healthUUID, 'Health Samples', 'Value')),
-          textField('source', 'apple-health'),
+          textField('source', 'whoop-via-apple-health'),
         ])}
         <key>WFHTTPHeaders</key>${fields([
           textField('Authorization', `Bearer ${token}`),
