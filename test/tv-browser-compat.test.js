@@ -66,6 +66,8 @@ test('desktop TV layout is locked to one viewport with flexible exercise rows', 
   assert.match(html, /\.exercise\{[^}]*flex:1;min-height:0;[^}]*display:flex/);
   assert.match(html, /\.toolbar button\.remote-focus\{[^}]*outline:2px solid #a9ffcf/);
   assert.match(html, /\.toolbar button\{[^}]*min-width:76px;min-height:38px/);
+  assert.match(html, /\.remote-dock\{[^}]*display:flex;flex:1/);
+  assert.match(html, /\.remote-command\{[^}]*flex:1/);
   assert.match(html, /\.calendar-key\{[^}]*font-size:18px/);
   assert.match(html, /\.calendar-initial\{[^}]*font-size:14px/);
   assert.match(html, /\.exercise\.remote-focus\{[^}]*box-shadow:[^}]*#a9ffcf/);
@@ -570,14 +572,14 @@ test('direct TV remote shortcuts, timer persistence, auto-advance, and undo work
   const press = (key, keyCode) => keydown({ key, keyCode, preventDefault() {} });
 
   assert.match(elements.content.innerHTML, /ambient-action primary remote-focus/);
-  assert.match(elements.controlHint.innerHTML, /Jordan.*Progress.*Kelsey.*Workout complete/);
-  press('ArrowRight', 39);
+  assert.match(elements.controlHint.innerHTML, /Jordan.*Kelsey.*Progress.*Workout complete/);
+  press('2', 50);
   assert.equal(elements.hello.textContent, 'HELLO, KELSEY');
-  press('ArrowUp', 38);
+  press('3', 51);
   assert.equal(elements.hello.textContent, 'HOUSEHOLD PROGRESS');
-  press('ArrowLeft', 37);
+  press('ColorF0Red', 403);
   assert.equal(elements.hello.textContent, 'HELLO, JORDAN');
-  press('ArrowDown', 40);
+  press('0', 48);
   assert.match(elements.remoteConfirm.className, /visible/);
   assert.match(elements.remoteConfirmTitle.textContent, /Complete Jordan’s Push workout/);
   press('Backspace', 8);
@@ -609,9 +611,9 @@ test('direct TV remote shortcuts, timer persistence, auto-advance, and undo work
   assert.match(elements.toast.className, /visible/);
 
   press('Backspace', 8);
-  press('ArrowDown', 40);
+  press('ColorF3Blue', 406);
   assert.match(elements.remoteConfirm.className, /visible/);
-  press('Enter', 13);
+  press('ColorF3Blue', 406);
   const completed = JSON.parse(storage.get([...storage.keys()].find((key) => key.startsWith('shopWorkout:jordan:'))));
   assert.equal(completed.completed, true);
   assert.doesNotMatch(elements.remoteConfirm.className, /visible/);
