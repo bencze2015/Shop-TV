@@ -243,7 +243,7 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
   assert.match(elements.content.innerHTML, /PUSH DAY/);
   assert.match(elements.content.innerHTML, /READY WHEN YOU ARE/);
   assert.match(elements.content.innerHTML, /Complete workout/);
-  assert.match(elements.content.innerHTML, /Track individual sets/);
+  assert.doesNotMatch(elements.content.innerHTML, /Track individual sets/, 'set tracking is reachable in code but no longer promoted as a home-screen action');
   assert.match(elements.content.innerHTML, /Dumbbell Bench Press/);
   assert.match(elements.content.innerHTML, /Est\. time/);
   assert.equal((elements.content.innerHTML.match(/class="ambient-move /g) || []).length, 3);
@@ -518,6 +518,81 @@ test('TV autopilot shows the remaining person, then returns to shared progress',
   context.runTvAutopilot(true);
   assert.equal(elements.hello.textContent, 'HOUSEHOLD PROGRESS');
   assert.doesNotMatch(elements.content.innerHTML, /Shared progress|YOUR MONTH, TOGETHER|Two routines/);
+});
+
+test('a forced history refresh lands on the pending profile even mid-idle-window; an unforced one waits', async () => {
+  const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
+  const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
+  const elements = createElementMap();
+  const storage = new Map([['shopProfile', 'jordan']]);
+  const TestDate = mutableDate('2026-08-10T12:00:00-07:00');
+
+  class FakeXmlHttpRequest {
+    open(method, url) { this.method = method; this.url = url; }
+    send() {
+      this.readyState = 4;
+      this.status = 200;
+      if (this.url.startsWith('/workouts.json')) {
+        this.responseText = JSON.stringify(workouts);
+      } else if (this.url.startsWith('/api/workout-plan')) {
+        this.responseText = JSON.stringify({
+          schemaVersion: 1,
+          revision: 1,
+          profileWeeks: {},
+          dateOverrides: {},
+          rescheduleEvents: [],
+        });
+      } else if (this.url.startsWith('/api/workout-history')) {
+        this.responseText = JSON.stringify({
+          profiles: {
+            jordan: [{ date: '2026-08-10', planName: 'Push', completionSource: 'manual' }],
+            kelsey: [],
+          },
+        });
+      } else if (this.url.startsWith('/api/daily-steps')) {
+        this.responseText = JSON.stringify({ goal: 12500, profiles: { jordan: [], kelsey: [] } });
+      } else {
+        this.responseText = JSON.stringify({ workouts: [], trends: {} });
+      }
+      this.onreadystatechange();
+    }
+  }
+
+  const context = {
+    console,
+    document: {
+      getElementById: (id) => elements[id],
+      addEventListener() {},
+    },
+    history: { replaceState() {} },
+    location: { search: '', pathname: '/' },
+    localStorage: {
+      getItem: (key) => storage.get(key) || null,
+      setItem: (key, value) => storage.set(key, value),
+    },
+    XMLHttpRequest: FakeXmlHttpRequest,
+    setInterval() {},
+    setTimeout() { return 1; },
+    clearTimeout() {},
+    Date: TestDate,
+  };
+  context.window = context;
+  vm.runInNewContext(source, context);
+
+  // init() already forced autopilot onto Kelsey (the pending profile) on load.
+  assert.equal(elements.hello.textContent, 'HELLO, KELSEY');
+
+  // Jordan checks his own plan again; this counts as a fresh interaction.
+  context.setProfile('jordan');
+  assert.equal(elements.hello.textContent, 'HELLO, JORDAN');
+
+  // A routine, unforced refresh within the idle window must not yank the screen away from him.
+  context.loadWorkoutHistory();
+  assert.equal(elements.hello.textContent, 'HELLO, JORDAN', 'an unforced refresh respects a recent interaction');
+
+  // A forced refresh (what init() uses) lands on the pending profile regardless.
+  context.loadWorkoutHistory(true);
+  assert.equal(elements.hello.textContent, 'HELLO, KELSEY', 'a forced refresh overrides even mid-idle-window');
 });
 
 test('direct TV remote shortcuts, timer persistence, auto-advance, and undo work together', async () => {
