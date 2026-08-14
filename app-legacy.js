@@ -1149,14 +1149,14 @@
     for (index = 0; index < weekOrder.length; index += 1) {
       day = weekOrder[index];
       plan = planFor(day);
-      html += '<div class="week-day ' +
+      html += '<button type="button" class="week-day ' +
         (day === selectedDay ? 'selected ' : '') +
         (focusZone === 'day' && day === selectedDay ? 'remote-focus ' : '') +
         (plan.exercises && plan.exercises.length ? 'training' : '') +
         '" onclick="setDay(\'' + day + '\')">' +
         '<span>' + day.slice(0, 3) + '</span><b>' +
         (plan.exercises && plan.exercises.length ? plan.name : 'Rest') +
-        '</b></div>';
+        '</b></button>';
     }
     return html + '</div>';
   }
@@ -1266,13 +1266,14 @@
       if (index === selectedExercise) className += ' selected';
       if (focusZone === 'workout' && index === selectedExercise) className += ' remote-focus';
       if (done >= exercise.sets) className += ' complete';
-      rows += '<div class="' + className + '" onclick="selectExercise(' + index + ')">' +
+      rows += '<button type="button" class="' + className + '" onclick="selectExercise(' + index + ')">' +
         '<span class="exercise-num">' + pad2(index + 1) + '</span>' +
+        '<span class="key exercise-key">' + (index + 4) + '</span>' +
         '<div class="exercise-main"><div class="exercise-name">' + exercise.name + '</div>' +
         '<div class="exercise-meta">' + exercise.reps + ' reps · ' +
         exercise.restSeconds + 's rest</div></div>' +
         '<div class="set-dots">' + setDots(done, exercise.sets) + '</div>' +
-        '<div class="set-count">' + done + '/' + exercise.sets + '</div></div>';
+        '<div class="set-count">' + done + '/' + exercise.sets + '</div></button>';
     }
 
     elements.content.innerHTML =
@@ -2171,12 +2172,23 @@
       event.key === colorName || event.keyCode === colorCode;
   }
 
+  function exerciseShortcutIndex(event) {
+    var digit = -1;
+    if (typeof event.key === 'string' && event.key.length === 1 && event.key >= '4' && event.key <= '8') {
+      digit = Number(event.key);
+    } else if (typeof event.keyCode === 'number' && event.keyCode >= 52 && event.keyCode <= 56) {
+      digit = event.keyCode - 48;
+    }
+    return digit === -1 ? -1 : digit - 4;
+  }
+
   if (document.addEventListener) {
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) refreshDashboardData();
     });
     document.addEventListener('keydown', function (event) {
       var items;
+      var digitIndex;
       noteInteraction();
       if (isBackKey(event)) {
         if (remoteCompleteArmed) {
@@ -2231,6 +2243,17 @@
         consumeRemoteEvent(event);
         armRemoteCompletion();
         return;
+      }
+      if (trackingMode === 'sets' && view === 'today') {
+        digitIndex = exerciseShortcutIndex(event);
+        if (digitIndex !== -1) {
+          items = planFor(selectedDay).exercises || [];
+          if (digitIndex < items.length) {
+            consumeRemoteEvent(event);
+            selectExercise(digitIndex);
+          }
+          return;
+        }
       }
       if (trackingMode !== 'sets' || view !== 'today') {
         if (event.key === 'ArrowLeft' || event.keyCode === 37) {
