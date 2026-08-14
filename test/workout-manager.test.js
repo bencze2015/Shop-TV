@@ -37,3 +37,17 @@ test('Workout Manager leads with a complete week and previews the rotating acces
   assert.match(html, /\.projection-day/);
   assert.match(html, /\.movement\.rotating/);
 });
+
+test('Workout Manager accepts a private fragment invite once and remembers the browser', async () => {
+  const [source, html] = await Promise.all([
+    readFile(new URL('../manager.js', import.meta.url), 'utf8'),
+    readFile(new URL('../manage.html', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(source, /new URLSearchParams\(fragment\)/);
+  assert.match(source, /params\.get\('invite'\)/);
+  assert.match(source, /localStorage\.setItem\(STORAGE_KEY, inviteToken\)/);
+  assert.match(source, /history\.replaceState\(\{\}, '', location\.pathname \+ location\.search\)/);
+  assert.doesNotMatch(source, /URLSearchParams\(location\.search\)/);
+  assert.match(html, /<meta name="referrer" content="no-referrer">/);
+});
