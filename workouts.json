@@ -54,7 +54,7 @@
         ]},
         "Thursday": {"name":"Rest","exercises":[]},
         "Friday": {"name":"Legs","exercises":[
-          {"id":"db-goblet-squat","name":"Elevated Goblet Squat","sets":4,"reps":"8–12","restSeconds":120},
+          {"id":"db-squat","name":"Dumbbell Squat","sets":4,"reps":"8–12","restSeconds":120},
           {"id":"db-rdl","name":"Dumbbell Romanian Deadlift","sets":3,"reps":"8–12","restSeconds":120},
           {"id":"db-bulgarian","name":"Bulgarian Split Squat","sets":3,"reps":"8–12 / leg","restSeconds":90}
         ]},
