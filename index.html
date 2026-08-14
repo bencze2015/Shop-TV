@@ -30,7 +30,7 @@
     .toolbar-group{display:flex;margin-left:10px;padding:4px;border:1px solid #26302c;border-radius:12px;background:#0b0f0e}
     .toolbar button{min-width:76px;min-height:38px;border:0;border-radius:9px;background:transparent;color:#8d9792;padding:9px 13px;font-size:11px;font-weight:850;letter-spacing:.075em;text-transform:uppercase;cursor:pointer}
     .toolbar button.active{background:#e8eee9;color:#101411}
-    .toolbar button.remote-focus{outline:2px solid #a9ffcf;outline-offset:3px;box-shadow:0 0 18px rgba(169,255,207,.18)}
+    .toolbar button.remote-focus,.toolbar button:hover,.toolbar button:focus-visible{outline:2px solid #a9ffcf;outline-offset:3px;box-shadow:0 0 18px rgba(169,255,207,.18)}
     .live{display:flex;align-items:center;color:#89938e;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
     .live-dot{width:6px;height:6px;margin-right:7px;border-radius:50%;background:#73e4a4;box-shadow:0 0 12px rgba(115,228,164,.45)}
     .clock{margin-left:14px;color:#d8ddda;font-size:13px;font-weight:700;white-space:nowrap}
@@ -87,12 +87,13 @@
     .timer-track i{display:block;height:100%;background:#a9ffcf}
 
     .session-list{width:62%;height:100%;min-height:0;display:flex;flex-direction:column}
-    .exercise{position:relative;flex:1;min-height:0;display:flex;align-items:center;margin-bottom:7px;border:1px solid #1f2723;border-radius:12px;background:#0c100f;padding:7px 14px;cursor:pointer;overflow:hidden}
+    .exercise{position:relative;width:100%;flex:1;min-height:0;display:flex;align-items:center;margin-bottom:7px;border:1px solid #1f2723;border-radius:12px;background:#0c100f;padding:10px 16px;cursor:pointer;overflow:hidden;text-align:left}
     .exercise:last-child{margin-bottom:0}
     .exercise.selected{background:#111714}
-    .exercise.remote-focus{border-color:#62796d;background:#141b18;box-shadow:inset 3px 0 0 #a9ffcf,0 0 18px rgba(61,119,87,.08)}
+    .exercise.remote-focus,.exercise:hover,.exercise:focus-visible{border-color:#62796d;background:#141b18;box-shadow:inset 3px 0 0 #a9ffcf,0 0 18px rgba(61,119,87,.08)}
     .exercise.complete{opacity:.66}
     .exercise-num{width:38px;color:#5e6863;font-size:10px;font-weight:850;letter-spacing:.1em}
+    .exercise-key{flex:0 0 auto;min-width:20px;margin:0 12px 0 0;text-align:center;font-weight:800}
     .exercise-main{min-width:0;flex:1}
     .exercise-name{overflow:hidden;color:#dce2de;font-size:17px;font-size:clamp(15px,1.25vw,20px);font-weight:700;line-height:1.05;text-overflow:ellipsis;white-space:nowrap}
     .exercise-meta{margin-top:5px;color:#68726d;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
@@ -124,7 +125,7 @@
     .ambient-actions{position:relative;z-index:1}
     .ambient-action{width:100%;display:flex;align-items:center;justify-content:space-between;margin-top:8px;border:1px solid #35423c;border-radius:11px;background:#121a16;color:#dbe3de;padding:12px 14px;font-size:10px;font-weight:850;letter-spacing:.11em;text-transform:uppercase;cursor:pointer;text-align:left}
     .ambient-action.primary{border-color:#a9ffcf;background:#a9ffcf;color:#0b110e}
-    .ambient-action.remote-focus{outline:3px solid #f3fff8;outline-offset:3px;box-shadow:0 0 25px rgba(169,255,207,.24)}
+    .ambient-action.remote-focus,.ambient-action:hover,.ambient-action:focus-visible{outline:3px solid #f3fff8;outline-offset:3px;box-shadow:0 0 25px rgba(169,255,207,.24)}
     .ambient-action span{font-size:17px;font-weight:500}
     .ambient-auto{margin-top:10px;color:#65706a;font-size:9px;font-weight:700;line-height:1.35}
 
@@ -150,10 +151,10 @@
     .recovery-actions{color:#7f8984;font-size:11px}
 
     .week-strip{flex:0 0 72px;display:flex;margin-top:12px}
-    .week-day{position:relative;flex:1;margin-right:7px;border:1px solid #202824;border-radius:11px;background:#0b0f0e;padding:11px 12px;cursor:pointer}
+    .week-day{position:relative;width:100%;flex:1;margin-right:7px;border:1px solid #202824;border-radius:11px;background:#0b0f0e;padding:14px 14px;cursor:pointer;text-align:left}
     .week-day:last-child{margin-right:0}
     .week-day.selected{border-color:#55675e;background:#141a17}
-    .week-day.remote-focus{outline:2px solid #a9ffcf;outline-offset:2px}
+    .week-day.remote-focus,.week-day:hover,.week-day:focus-visible{outline:2px solid #a9ffcf;outline-offset:2px}
     .week-day.training:after{content:"";position:absolute;right:10px;top:10px;width:5px;height:5px;border-radius:50%;background:#a9ffcf}
     .week-day span{display:block;color:#66706b;font-size:9px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
     .week-day b{display:block;margin-top:8px;color:#cbd2ce;font-size:12px}
@@ -235,11 +236,11 @@
     .footerbar{flex:0 0 52px;display:flex;align-items:stretch;justify-content:space-between;margin-top:8px}
     .control-hint{color:#77817c;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
     .remote-dock{display:flex;flex:1;min-width:0;border:1px solid #29352f;border-radius:12px;overflow:hidden;background:#0b100d}
-    .remote-command{position:relative;flex:1;min-width:0;border:0;border-right:1px solid #29352f;background:#0e1511;color:#aab4af;font-family:inherit;font-size:12px;font-weight:850;letter-spacing:.055em;text-transform:uppercase;cursor:pointer}
+    .remote-command{position:relative;flex:1;min-width:0;border:0;border-right:1px solid #29352f;background:#0e1511;color:#aab4af;font-family:inherit;font-size:12px;font-weight:850;letter-spacing:.055em;text-transform:uppercase;cursor:pointer;padding:12px 14px}
     .remote-command:last-child{border-right:0}
-    .remote-command:hover,.remote-command:focus,.remote-command.active{z-index:1;outline:2px solid #a9ffcf;outline-offset:-2px;background:#17221c;color:#f1f6f3}
+    .remote-command:hover,.remote-command:focus,.remote-command:focus-visible,.remote-command.active{z-index:1;outline:2px solid #a9ffcf;outline-offset:-2px;background:#17221c;color:#f1f6f3}
     .remote-command.complete{color:#bfffdc;background:#102019}
-    .remote-command strong{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;margin-right:8px;border:1px solid #405047;border-radius:8px;background:#172019;color:#f1f6f3;font-size:13px;letter-spacing:0}
+    .remote-command strong{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;margin-right:8px;border:1px solid #405047;border-radius:8px;background:#172019;color:#f1f6f3;font-size:15px;letter-spacing:0}
     .remote-command .remote-color{width:8px;min-width:8px;height:8px;margin:0 7px 0 0;border:0;border-radius:50%;padding:0}
     .remote-command .red{background:#db5d65}.remote-command .green{background:#66d594}.remote-command .yellow{background:#e2c75d}.remote-command .blue{background:#5e8fda}
     .key{display:inline-block;margin:0 5px;border:1px solid #3d4a44;border-radius:6px;padding:4px 8px;background:#101613;color:#dce5e0}
