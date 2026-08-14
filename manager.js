@@ -57,10 +57,16 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { element.className = 'toast'; }, 3200);
   }
-  function hashTokenFromUrl() {
-    var match = /^#token=([^&]+)/.exec(location.hash || '');
-    if (!match) return '';
-    try { return decodeURIComponent(match[1]); } catch (error) { return ''; }
+  function inviteTokenFromUrl() {
+    var fragment = String(location.hash || '').replace(/^#/, '');
+    var params;
+    if (!fragment) return '';
+    try {
+      params = new URLSearchParams(fragment);
+      return (params.get('invite') || '').trim();
+    } catch (error) {
+      return '';
+    }
   }
   function request(url, options) {
     var settings = options || {};
@@ -498,10 +504,12 @@
   document.getElementById('unlockButton').addEventListener('click', unlock);
   document.getElementById('tokenInput').addEventListener('keydown', function (event) { if (event.key === 'Enter') unlock(); });
 
-  var fragmentToken = hashTokenFromUrl();
-  if (fragmentToken) {
-    state.token = fragmentToken;
-    localStorage.setItem(STORAGE_KEY, fragmentToken);
+  var inviteToken = inviteTokenFromUrl();
+  if (inviteToken) {
+    state.token = inviteToken;
+    localStorage.setItem(STORAGE_KEY, inviteToken);
+    // Remove the secret-bearing fragment immediately. URL fragments are never
+    // sent to the server, and this keeps the invite out of browser history too.
     history.replaceState({}, '', location.pathname + location.search);
   } else {
     state.token = localStorage.getItem(STORAGE_KEY) || '';
