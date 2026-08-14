@@ -614,7 +614,7 @@
     }
   }
 
-  function loadWorkoutHistory() {
+  function loadWorkoutHistory(force) {
     requestJson('/api/workout-history?time=' + new Date().getTime(), function (error, response) {
       if (error || !response || !response.profiles) return;
       sharedHistoryByProfile.jordan = response.profiles.jordan || [];
@@ -622,7 +622,7 @@
       workoutHistoryReady = true;
       migrateLocalHistory();
       renderContent();
-      runTvAutopilot(false);
+      runTvAutopilot(!!force);
     });
   }
 
@@ -1214,9 +1214,6 @@
       (!complete ? '<button class="ambient-action primary ' +
         (focusZone === 'ambient' && ambientAction === 0 ? 'remote-focus' : '') +
         '" onclick="activateAmbientAction(0)">' + primaryLabel + '<span>✓</span></button>' : '') +
-      '<button class="ambient-action ' +
-        (focusZone === 'ambient' && (complete || ambientAction === 1) ? 'remote-focus' : '') +
-        '" onclick="setTrackingMode(\'sets\')">' + (complete ? 'Review set tracker' : 'Track individual sets') + '<span>→</span></button>' +
       (!complete && profileId === 'jordan' ? '<div class="ambient-auto">' +
         (whoopData && whoopData.workoutAccess === false
           ? 'Manual completion always remains available.'
@@ -2121,7 +2118,7 @@
       }
       renderAll();
       loadWorkoutPlan();
-      loadWorkoutHistory();
+      loadWorkoutHistory(true);
       loadDailySteps();
       updateRestTimer();
       loadAllWhoop();
@@ -2153,6 +2150,7 @@
   window.undoLastSet = undoLastSet;
   window.selectExercise = selectExercise;
   window.loadWorkoutPlan = loadWorkoutPlan;
+  window.loadWorkoutHistory = loadWorkoutHistory;
   window.runTvAutopilot = runTvAutopilot;
 
   function isBackKey(event) {
