@@ -1268,7 +1268,6 @@
       if (done >= exercise.sets) className += ' complete';
       rows += '<button type="button" class="' + className + '" onclick="selectExercise(' + index + ')">' +
         '<span class="exercise-num">' + pad2(index + 1) + '</span>' +
-        '<span class="key exercise-key">' + (index + 4) + '</span>' +
         '<div class="exercise-main"><div class="exercise-name">' + exercise.name + '</div>' +
         '<div class="exercise-meta">' + exercise.reps + ' reps · ' +
         exercise.restSeconds + 's rest</div></div>' +
@@ -2172,23 +2171,12 @@
       event.key === colorName || event.keyCode === colorCode;
   }
 
-  function exerciseShortcutIndex(event) {
-    var digit = -1;
-    if (typeof event.key === 'string' && event.key.length === 1 && event.key >= '4' && event.key <= '8') {
-      digit = Number(event.key);
-    } else if (typeof event.keyCode === 'number' && event.keyCode >= 52 && event.keyCode <= 56) {
-      digit = event.keyCode - 48;
-    }
-    return digit === -1 ? -1 : digit - 4;
-  }
-
   if (document.addEventListener) {
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) refreshDashboardData();
     });
     document.addEventListener('keydown', function (event) {
       var items;
-      var digitIndex;
       noteInteraction();
       if (isBackKey(event)) {
         if (remoteCompleteArmed) {
@@ -2243,17 +2231,6 @@
         consumeRemoteEvent(event);
         armRemoteCompletion();
         return;
-      }
-      if (trackingMode === 'sets' && view === 'today') {
-        digitIndex = exerciseShortcutIndex(event);
-        if (digitIndex !== -1) {
-          items = planFor(selectedDay).exercises || [];
-          if (digitIndex < items.length) {
-            consumeRemoteEvent(event);
-            selectExercise(digitIndex);
-          }
-          return;
-        }
       }
       if (trackingMode !== 'sets' || view !== 'today') {
         if (event.key === 'ArrowLeft' || event.keyCode === 37) {

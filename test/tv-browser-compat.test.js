@@ -587,6 +587,7 @@ test('direct TV remote shortcuts, timer persistence, auto-advance, and undo work
 
   context.setTrackingMode('sets');
   assert.match(elements.content.innerHTML, /exercise selected remote-focus/);
+  assert.match(elements.content.innerHTML, /<button type="button" class="exercise/, 'exercise rows are real buttons, not click-handled divs');
 
   press('Enter', 13);
   assert.match(elements.content.innerHTML, /Rest timer/);
@@ -619,76 +620,6 @@ test('direct TV remote shortcuts, timer persistence, auto-advance, and undo work
   assert.doesNotMatch(elements.remoteConfirm.className, /visible/);
 
   assert.ok(intervals.length >= 3);
-});
-
-test('digit shortcuts jump directly to an exercise while set tracking, and are inert elsewhere', async () => {
-  const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
-  const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
-  const elements = createElementMap();
-  const storage = new Map();
-  const TestDate = mutableDate('2026-08-10T12:00:00-07:00');
-  let keydown;
-
-  class FakeXmlHttpRequest {
-    open(_method, url) {
-      this.url = url;
-    }
-
-    send() {
-      this.readyState = 4;
-      this.status = 200;
-      this.responseText = this.url.startsWith('/workouts.json')
-        ? JSON.stringify(workouts)
-        : JSON.stringify({});
-      this.onreadystatechange();
-    }
-  }
-
-  const context = {
-    console,
-    document: {
-      getElementById: (id) => elements[id],
-      addEventListener(type, listener) {
-        if (type === 'keydown') keydown = listener;
-      }
-    },
-    history: { replaceState() {} },
-    location: { search: '?day=Monday&preview=1', pathname: '/' },
-    localStorage: {
-      getItem: (key) => storage.get(key) || null,
-      setItem: (key, value) => storage.set(key, value)
-    },
-    XMLHttpRequest: FakeXmlHttpRequest,
-    setInterval() {},
-    setTimeout() { return 1; },
-    clearTimeout() {},
-    Date: TestDate
-  };
-  context.window = context;
-  vm.runInNewContext(source, context);
-
-  const press = (key, keyCode) => keydown({ key, keyCode, preventDefault() {} });
-
-  // Monday/Push has three exercises: Dumbbell Bench Press (0), Incline Dumbbell Press (1), Dumbbell Lateral Raise (2).
-  assert.match(elements.content.innerHTML, /ambient-action primary remote-focus/);
-  press('5', 53);
-  assert.match(elements.content.innerHTML, /ambient-action primary remote-focus/, 'digit shortcuts are inert outside the set tracker');
-
-  context.setTrackingMode('sets');
-  assert.match(elements.content.innerHTML, /<button type="button" class="exercise/, 'exercise rows are real buttons, not click-handled divs');
-  assert.match(elements.content.innerHTML, /class="key exercise-key">4<\/span>/, 'first exercise row is labeled with its shortcut digit');
-  assert.match(elements.content.innerHTML, /class="key exercise-key">5<\/span>/, 'second exercise row is labeled with its shortcut digit');
-  assert.match(elements.content.innerHTML, /class="key exercise-key">6<\/span>/, 'third exercise row is labeled with its shortcut digit');
-  assert.match(elements.content.innerHTML, /focus-name">Dumbbell Bench Press/);
-
-  press('5', 53);
-  assert.match(elements.content.innerHTML, /focus-name">Incline Dumbbell Press/, 'digit 5 selects the second exercise');
-
-  press('8', 56);
-  assert.match(elements.content.innerHTML, /focus-name">Incline Dumbbell Press/, 'a digit past the exercise count is ignored');
-
-  context.setDay('Tuesday');
-  assert.match(elements.content.innerHTML, /<button type="button" class="week-day/, 'day-strip tiles are real buttons, not click-handled divs');
 });
 
 test('eligible WHOOP strength workouts automatically complete both household plans', async () => {
@@ -900,6 +831,9 @@ test('all seven day previews render without overflowing the exercise budget', as
       `${day} exceeds the exercise row budget`
     );
   }
+
+  context.setDay('Tuesday');
+  assert.match(elements.content.innerHTML, /<button type="button" class="week-day/, 'day-strip tiles are real buttons, not click-handled divs');
 });
 
 test('the TV applies live date exceptions without a refresh and keeps completion attached to its plan', async () => {
