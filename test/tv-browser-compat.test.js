@@ -5,7 +5,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const elementIds = [
-  'planName', 'hello', 'date', 'clock', 'preview', 'householdStatus', 'jordanBtn', 'kelseyBtn',
+  'screen', 'planName', 'hello', 'date', 'clock', 'preview', 'householdStatus', 'jordanBtn', 'kelseyBtn',
   'whoopLive', 'progressTab', 'whoop', 'content', 'controlHint', 'toast',
   'remoteConfirm', 'remoteConfirmTitle',
   'celebration', 'celebrationSource', 'celebrationTitle', 'celebrationMeta'
@@ -593,6 +593,192 @@ test('a forced history refresh lands on the pending profile even mid-idle-window
   // A forced refresh (what init() uses) lands on the pending profile regardless.
   context.loadWorkoutHistory(true);
   assert.equal(elements.hello.textContent, 'HELLO, KELSEY', 'a forced refresh overrides even mid-idle-window');
+});
+
+test('the screen dims after sustained inactivity and any interaction wakes it immediately', async () => {
+  const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
+  const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
+  const elements = createElementMap();
+  const storage = new Map();
+  const TestDate = mutableDate('2026-08-10T12:00:00-07:00');
+
+  class FakeXmlHttpRequest {
+    open(_method, url) { this.url = url; }
+    send() {
+      this.readyState = 4;
+      this.status = 200;
+      this.responseText = this.url.startsWith('/workouts.json')
+        ? JSON.stringify(workouts)
+        : JSON.stringify({});
+      this.onreadystatechange();
+    }
+  }
+
+  const context = {
+    console,
+    document: {
+      getElementById: (id) => elements[id],
+      addEventListener() {}
+    },
+    history: { replaceState() {} },
+    location: { search: '', pathname: '/' },
+    localStorage: {
+      getItem: (key) => storage.get(key) || null,
+      setItem: (key, value) => storage.set(key, value)
+    },
+    XMLHttpRequest: FakeXmlHttpRequest,
+    setInterval() {},
+    setTimeout() { return 1; },
+    clearTimeout() {},
+    Date: TestDate
+  };
+  context.window = context;
+  vm.runInNewContext(source, context);
+
+  assert.doesNotMatch(elements.screen.className, /ambient-dim/, 'starts undimmed');
+
+  TestDate.set('2026-08-10T12:04:00-07:00');
+  context.updateAmbientDim();
+  assert.doesNotMatch(elements.screen.className, /ambient-dim/, 'stays bright under the five-minute idle threshold');
+
+  TestDate.set('2026-08-10T12:06:00-07:00');
+  context.updateAmbientDim();
+  assert.match(elements.screen.className, /ambient-dim/, 'dims once idle time crosses the threshold');
+  assert.doesNotMatch(elements.screen.className, /ambient-dim ambient-dim|ambient-dim.*ambient-dim/, 'dim class is not duplicated');
+
+  context.setProfile('kelsey');
+  assert.doesNotMatch(elements.screen.className, /ambient-dim/, 'any interaction wakes the screen immediately, not just on the next poll');
+
+  TestDate.set('2026-08-10T12:12:00-07:00');
+  context.updateAmbientDim();
+  assert.match(elements.screen.className, /ambient-dim/, 'dims again after the idle clock restarts');
+});
+
+test('the screen drifts slowly through a small set of offsets to avoid static pixels', async () => {
+  const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
+  const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
+  const elements = createElementMap();
+  const storage = new Map();
+  const TestDate = mutableDate('2026-08-10T12:00:00-07:00');
+
+  class FakeXmlHttpRequest {
+    open(_method, url) { this.url = url; }
+    send() {
+      this.readyState = 4;
+      this.status = 200;
+      this.responseText = this.url.startsWith('/workouts.json')
+        ? JSON.stringify(workouts)
+        : JSON.stringify({});
+      this.onreadystatechange();
+    }
+  }
+
+  const context = {
+    console,
+    document: {
+      getElementById: (id) => elements[id],
+      addEventListener() {}
+    },
+    history: { replaceState() {} },
+    location: { search: '', pathname: '/' },
+    localStorage: {
+      getItem: (key) => storage.get(key) || null,
+      setItem: (key, value) => storage.set(key, value)
+    },
+    XMLHttpRequest: FakeXmlHttpRequest,
+    setInterval() {},
+    setTimeout() { return 1; },
+    clearTimeout() {},
+    Date: TestDate
+  };
+  context.window = context;
+  vm.runInNewContext(source, context);
+
+  const seen = new Set([elements.screen.style.transform || '']);
+  for (let i = 0; i < 8; i += 1) {
+    context.driftScreen();
+    seen.add(elements.screen.style.transform);
+    const match = /translate\((-?\d+)px,(-?\d+)px\)/.exec(elements.screen.style.transform);
+    assert.ok(match, 'drift sets a translate transform');
+    assert.ok(Math.abs(Number(match[1])) <= 3 && Math.abs(Number(match[2])) <= 3, 'drift stays subtle (a few px)');
+  }
+  assert.ok(seen.size > 1, 'drift actually cycles through more than one position');
+});
+
+test('an autopilot-driven change wakes a dimmed screen without any local interaction', async () => {
+  const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
+  const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
+  const elements = createElementMap();
+  const storage = new Map([['shopProfile', 'jordan']]);
+  const TestDate = mutableDate('2026-08-10T12:00:00-07:00');
+  let kelseyDoneRemotely = false;
+
+  class FakeXmlHttpRequest {
+    open(method, url) { this.method = method; this.url = url; }
+    send() {
+      this.readyState = 4;
+      this.status = 200;
+      if (this.url.startsWith('/workouts.json')) {
+        this.responseText = JSON.stringify(workouts);
+      } else if (this.url.startsWith('/api/workout-plan')) {
+        this.responseText = JSON.stringify({
+          schemaVersion: 1,
+          revision: 1,
+          profileWeeks: {},
+          dateOverrides: {},
+          rescheduleEvents: [],
+        });
+      } else if (this.url.startsWith('/api/workout-history')) {
+        this.responseText = JSON.stringify({
+          profiles: {
+            jordan: [{ date: '2026-08-10', planName: 'Push', completionSource: 'manual' }],
+            kelsey: kelseyDoneRemotely
+              ? [{ date: '2026-08-10', planName: 'Push', completionSource: 'manual' }]
+              : [],
+          },
+        });
+      } else if (this.url.startsWith('/api/daily-steps')) {
+        this.responseText = JSON.stringify({ goal: 12500, profiles: { jordan: [], kelsey: [] } });
+      } else {
+        this.responseText = JSON.stringify({ workouts: [], trends: {} });
+      }
+      this.onreadystatechange();
+    }
+  }
+
+  const context = {
+    console,
+    document: {
+      getElementById: (id) => elements[id],
+      addEventListener() {},
+    },
+    history: { replaceState() {} },
+    location: { search: '', pathname: '/' },
+    localStorage: {
+      getItem: (key) => storage.get(key) || null,
+      setItem: (key, value) => storage.set(key, value),
+    },
+    XMLHttpRequest: FakeXmlHttpRequest,
+    setInterval() {},
+    setTimeout() { return 1; },
+    clearTimeout() {},
+    Date: TestDate,
+  };
+  context.window = context;
+  vm.runInNewContext(source, context);
+
+  // init() already forced autopilot onto Kelsey, the pending profile.
+  assert.equal(elements.hello.textContent, 'HELLO, KELSEY');
+
+  TestDate.set('2026-08-10T12:06:00-07:00');
+  context.updateAmbientDim();
+  assert.match(elements.screen.className, /ambient-dim/);
+
+  // Kelsey completes her workout elsewhere (phone / WHOOP) -- nothing touches the TV directly.
+  kelseyDoneRemotely = true;
+  context.loadWorkoutHistory(true);
+  assert.equal(elements.hello.textContent, 'HOUSEHOLD PROGRESS', 'autopilot moved on since everyone is now done');
+  assert.doesNotMatch(elements.screen.className, /ambient-dim/, 'a data-driven autopilot change wakes the screen with no local interaction');
 });
 
 test('direct TV remote shortcuts, timer persistence, auto-advance, and undo work together', async () => {
