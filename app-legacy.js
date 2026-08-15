@@ -9,6 +9,10 @@
   var AUTOPILOT_IDLE_MS = 90 * 1000;
   var WHOOP_RETRY_MS = 60 * 1000;
   var CELEBRATION_MS = 45 * 1000;
+  var IDLE_DIM_MS = 5 * 60 * 1000;
+  var IDLE_DIM_CHECK_MS = 15 * 1000;
+  var DRIFT_STEP_MS = 90 * 1000;
+  var DRIFT_OFFSETS = [[0, 0], [2, 1], [3, -1], [1, -2], [-1, -2], [-3, -1], [-2, 1], [0, 2]];
   var requestedDay = queryValue('preview') === '1' ? queryValue('day') : null;
   var selectedDay = requestedDay;
   var data = { profiles: {} };
@@ -25,6 +29,8 @@
   var sharedStepGoal = 12500;
   var workoutHistoryReady = false;
   var lastInteractionAt = 0;
+  var lastActiveAt = new Date().getTime();
+  var driftIndex = 0;
   var profileId = readStorage('shopProfile') || 'jordan';
   var profile = { name: 'Jordan', week: {} };
   var whoopData = null;
@@ -50,6 +56,7 @@
   var activeTrainingDateKey = null;
 
   var elements = {
+    screen: byId('screen'),
     planName: byId('planName'),
     hello: byId('hello'),
     date: byId('date'),
@@ -936,6 +943,26 @@
 
   function noteInteraction() {
     lastInteractionAt = new Date().getTime();
+    noteActive();
+  }
+
+  function noteActive() {
+    lastActiveAt = new Date().getTime();
+    updateAmbientDim();
+  }
+
+  function updateAmbientDim() {
+    var idle = new Date().getTime() - lastActiveAt;
+    if (!elements.screen) return;
+    setClass(elements.screen, 'ambient-dim', idle >= IDLE_DIM_MS);
+  }
+
+  function driftScreen() {
+    var offset;
+    if (!elements.screen || !elements.screen.style) return;
+    driftIndex = (driftIndex + 1) % DRIFT_OFFSETS.length;
+    offset = DRIFT_OFFSETS[driftIndex];
+    elements.screen.style.transform = 'translate(' + offset[0] + 'px,' + offset[1] + 'px)';
   }
 
   function activeSetSession() {
@@ -992,6 +1019,7 @@
       changed = true;
     }
     if (!changed) return;
+    noteActive();
 
     selectedExercise = 0;
     trackingMode = 'ambient';
@@ -1876,6 +1904,7 @@
     state.whoopWorkoutId = matching.id || matching.uuid || null;
     state.whoopSportName = matching.sport_name || matching.sport_id || '';
     saveProfileState(targetProfileId, state);
+    noteActive();
     if (targetProfileId === profileId && selectedDay === trainingDayName()) {
       clearRestTimer();
       lastAction = null;
@@ -2130,6 +2159,8 @@
       window.setInterval(updateClock, 30 * 1000);
       window.setInterval(checkTrainingDayReset, 30 * 1000);
       window.setInterval(updateRestTimer, 1000);
+      window.setInterval(updateAmbientDim, IDLE_DIM_CHECK_MS);
+      window.setInterval(driftScreen, DRIFT_STEP_MS);
     });
   }
 
@@ -2152,6 +2183,8 @@
   window.loadWorkoutPlan = loadWorkoutPlan;
   window.loadWorkoutHistory = loadWorkoutHistory;
   window.runTvAutopilot = runTvAutopilot;
+  window.updateAmbientDim = updateAmbientDim;
+  window.driftScreen = driftScreen;
 
   function isBackKey(event) {
     return event.key === 'Escape' || event.key === 'Backspace' ||
