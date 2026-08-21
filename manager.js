@@ -9,6 +9,7 @@
     token: '',
     defaults: null,
     config: null,
+    history: null,
     target: 'jordan',
     weekOffset: 0,
     exerciseProfile: 'jordan',
@@ -186,6 +187,59 @@
   function shortDate(date) {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   }
+  function backfillDates() {
+    var today = trainingDate();
+    var first = new Date(today.getFullYear(), today.getMonth(), 1, 12, 0, 0, 0);
+    var dates = [];
+    var cursor = new Date(today.getTime());
+    while (cursor.getTime() >= first.getTime()) {
+      dates.push(new Date(cursor.getTime()));
+      cursor = addDays(cursor, -1);
+    }
+    return dates;
+  }
+  function historyEntry(profile, key) {
+    var list = (state.history && state.history.profiles && state.history.profiles[profile]) || [];
+    for (var index = 0; index < list.length; index += 1) {
+      if (list[index].date === key) return list[index];
+    }
+    return null;
+  }
+  function completionSourceLabel(source) {
+    if (source === 'whoop') return 'Confirmed by WHOOP';
+    if (source === 'backfill') return 'Marked in Manager';
+    if (source === 'sets') return 'Tracked on TV';
+    if (source === 'manual') return 'Marked on TV';
+    return 'Completed';
+  }
+  function renderBackfillPill(profile, date) {
+    var key = dateKey(date);
+    var plan = resolvedPlan(profile, date);
+    var entry = historyEntry(profile, key);
+    var name = state.defaults.profiles[profile].name;
+    if (!plan.exercises || !plan.exercises.length) return '';
+    if (entry) {
+      return '<button class="backfill-pill done' + (entry.completionSource === 'whoop' ? ' whoop' : '') +
+        '" data-backfill="' + profile + '|' + key + '"><strong>' + escapeHtml(name) + '</strong><span>✓ ' +
+        completionSourceLabel(entry.completionSource) + '</span></button>';
+    }
+    return '<button class="backfill-pill" data-backfill="' + profile + '|' + key + '"><strong>' + escapeHtml(name) +
+      '</strong><span>Mark ' + escapeHtml(plan.name) + ' done</span></button>';
+  }
+  function renderBackfillRow(date) {
+    var pills = PROFILES.map(function (profile) { return renderBackfillPill(profile, date); }).join('');
+    var isToday = dateKey(date) === dateKey(trainingDate());
+    if (!pills) return '';
+    return '<div class="backfill-row"><div class="backfill-date"><strong>' +
+      (isToday ? 'Today' : DAYS[(date.getDay() + 6) % 7].slice(0, 3)) + '</strong><span>' + shortDate(date) + '</span></div>' +
+      '<div class="backfill-people">' + pills + '</div></div>';
+  }
+  function renderBackfill() {
+    var rows = backfillDates().map(renderBackfillRow).filter(function (row) { return row; }).join('');
+    return '<section class="card"><div class="section-head"><div><div class="eyebrow">Completion</div><h2>Mark days done</h2>' +
+      '<p class="sub">For workouts that happened but nobody tapped Complete on the TV. Covers this month, through today. Tap again to undo.</p></div></div>' +
+      '<div class="backfill-list">' + (rows || '<p class="sub">No training days yet this month.</p>') + '</div></section>';
+  }
   function exerciseSummary(plan) {
     return plan.exercises.map(function (exercise, index) {
       return '<span class="movement ' + (index === 2 && (plan.name === 'Push' || plan.name === 'Pull') ? 'rotating' : '') + '">' +
@@ -274,6 +328,7 @@
       '<button class="action" data-action="defer"><strong>Move today → tomorrow</strong><span>Keeps today as rest and preserves the next workout.</span></button>' +
       '<button class="action" data-action="shift"><strong>Shift remaining week</strong><span>Moves every remaining session forward one day.</span></button>' +
       '<button class="action wide" data-action="restore"><strong>Restore normal schedule</strong><span>Removes this week’s exceptions for ' + targetLabel() + '.</span></button></div></section>' +
+      renderBackfill() +
       '<section class="card"><div class="section-head"><div><div class="eyebrow">Foundation</div><h2>Normal weekly schedule</h2><p class="sub">Permanent until you change it again.</p></div></div>' +
       '<div class="toggle-row"><div><strong>Shared weekly rhythm</strong><span>Permanent day changes stay aligned for both people.</span></div>' +
       '<button class="switch ' + (state.config.sharedSchedule ? 'on' : '') + '" data-action="toggle-shared" aria-label="Toggle shared schedule"></button></div>' +
@@ -433,12 +488,36 @@
     });
     saveConfig('Special date saved');
   }
+  function loadHistory() {
+    return request('/api/workout-history').then(function (result) { state.history = result; });
+  }
+  function toggleBackfill(profile, key) {
+    var entry = historyEntry(profile, key);
+    var plan = resolvedPlan(profile, dateFromKey(key));
+    var name = state.defaults.profiles[profile].name;
+    var pending = entry
+      ? request('/api/workout-history', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile: profile, date: key })
+      })
+      : request('/api/workout-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile: profile, date: key, planName: plan.name, completionSource: 'backfill' })
+      });
+    pending.then(loadHistory).then(function () {
+      render();
+      showToast((entry ? 'Unmarked · ' : 'Marked done · ') + name + ' · ' + shortDate(dateFromKey(key)));
+    }).catch(function (error) { showToast(error.message); });
+  }
   function handleClick(event) {
     var targetButton = event.target.closest('[data-target]');
     var weekButton = event.target.closest('[data-week-offset]');
     var profileEditor = event.target.closest('[data-profile-editor]');
     var planEditor = event.target.closest('[data-plan-editor]');
     var exceptionButton = event.target.closest('[data-remove-exception]');
+    var backfillButton = event.target.closest('[data-backfill]');
     var actionButton = event.target.closest('[data-action]');
     if (targetButton) { state.target = targetButton.dataset.target; render(); return; }
     if (weekButton) { state.weekOffset = Number(weekButton.dataset.weekOffset); render(); return; }
@@ -448,6 +527,11 @@
       var parts = exceptionButton.dataset.removeException.split('|');
       deleteOverride(parts[1], parts[0]);
       saveConfig('Special date removed');
+      return;
+    }
+    if (backfillButton) {
+      var backfillParts = backfillButton.dataset.backfill.split('|');
+      toggleBackfill(backfillParts[0], backfillParts[1]);
       return;
     }
     if (!actionButton) return;
@@ -474,7 +558,8 @@
   function load() {
     return Promise.all([
       fetch('/workouts.json?time=' + Date.now()).then(function (response) { return response.json(); }),
-      request('/api/workout-admin')
+      request('/api/workout-admin'),
+      loadHistory().catch(function () { state.history = null; })
     ]).then(function (values) {
       state.defaults = values[0];
       state.config = values[1];
