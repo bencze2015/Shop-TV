@@ -520,6 +520,76 @@ test('TV autopilot shows the remaining person, then returns to shared progress',
   assert.doesNotMatch(elements.content.innerHTML, /Shared progress|YOUR MONTH, TOGETHER|Two routines/);
 });
 
+test('a backfilled past day does not confuse autopilot, but backfilling today clears pending status', async () => {
+  const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
+  const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
+  const elements = createElementMap();
+  const storage = new Map([['shopProfile', 'kelsey']]);
+  const TestDate = mutableDate('2026-08-10T12:00:00-07:00');
+
+  class FakeXmlHttpRequest {
+    open(method, url) { this.method = method; this.url = url; }
+    send() {
+      this.readyState = 4;
+      this.status = 200;
+      if (this.url.startsWith('/workouts.json')) {
+        this.responseText = JSON.stringify(workouts);
+      } else if (this.url.startsWith('/api/workout-plan')) {
+        this.responseText = JSON.stringify({
+          schemaVersion: 1,
+          revision: 1,
+          profileWeeks: {},
+          dateOverrides: {},
+          rescheduleEvents: [],
+        });
+      } else if (this.url.startsWith('/api/workout-history')) {
+        this.responseText = JSON.stringify({
+          profiles: {
+            // Jordan's backfilled entry is for yesterday -- a past day, not today -- so it must not
+            // count toward today's pending check. He should still show up as pending today.
+            jordan: [{ date: '2026-08-09', planName: 'Legs', completionSource: 'backfill' }],
+            // Kelsey's backfilled entry is for today, so it should clear her pending status exactly
+            // like a manual TV tap or a WHOOP auto-detect would.
+            kelsey: [{ date: '2026-08-10', planName: 'Push', completionSource: 'backfill' }],
+          },
+        });
+      } else if (this.url.startsWith('/api/daily-steps')) {
+        this.responseText = JSON.stringify({ goal: 12500, profiles: { jordan: [], kelsey: [] } });
+      } else {
+        this.responseText = JSON.stringify({ workouts: [], trends: {} });
+      }
+      this.onreadystatechange();
+    }
+  }
+
+  const context = {
+    console,
+    document: {
+      getElementById: (id) => elements[id],
+      addEventListener() {},
+    },
+    history: { replaceState() {} },
+    location: { search: '', pathname: '/' },
+    localStorage: {
+      getItem: (key) => storage.get(key) || null,
+      setItem: (key, value) => storage.set(key, value),
+    },
+    XMLHttpRequest: FakeXmlHttpRequest,
+    setInterval() {},
+    setTimeout() { return 1; },
+    clearTimeout() {},
+    Date: TestDate,
+  };
+  context.window = context;
+  vm.runInNewContext(source, context);
+
+  // Only Jordan is pending today, so init()'s forced autopilot lands on him, not Kelsey (who is
+  // still the last-selected profile in storage) and not the shared Progress view (which would show
+  // if nobody were pending).
+  assert.equal(elements.hello.textContent, 'HELLO, JORDAN');
+  assert.match(elements.content.innerHTML, /READY WHEN YOU ARE/);
+});
+
 test('a forced history refresh lands on the pending profile even mid-idle-window; an unforced one waits', async () => {
   const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
   const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));

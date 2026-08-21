@@ -48,6 +48,34 @@ test('shared workout history stores both profiles and sorts newest first', async
   assert.equal(result.profiles.kelsey[0].planName, 'Pull');
 });
 
+test('backfilled completions keep their distinct source and can be undone', async () => {
+  const store = createWorkoutHistoryStore(memoryRedis(), 'test:history');
+  const saved = await store.save({
+    profile: 'jordan',
+    date: '2026-08-10',
+    planName: 'Legs',
+    completionSource: 'backfill',
+  });
+  assert.equal(saved.completionSource, 'backfill', 'backfill is not silently downgraded to manual');
+
+  let result = await store.list();
+  assert.deepEqual(result.profiles.jordan.map((entry) => entry.date), ['2026-08-10']);
+
+  await store.remove('jordan', '2026-08-10');
+  result = await store.list();
+  assert.deepEqual(result.profiles.jordan, []);
+});
+
+test('an unrecognized completion source is not silently accepted as backfill', () => {
+  const entry = normalizeWorkoutCompletion({
+    profile: 'jordan',
+    date: '2026-08-10',
+    planName: 'Legs',
+    completionSource: 'not-a-real-source',
+  }, new Date('2026-08-14T12:00:00-07:00'));
+  assert.equal(entry.completionSource, 'manual');
+});
+
 test('future dates cannot be marked complete', () => {
   assert.throws(() => normalizeWorkoutCompletion({
     profile: 'jordan',

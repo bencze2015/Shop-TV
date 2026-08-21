@@ -38,6 +38,44 @@ test('Workout Manager leads with a complete week and previews the rotating acces
   assert.match(html, /\.movement\.rotating/);
 });
 
+test('Workout Manager can backfill past completions, per profile, without touching rest or future days', async () => {
+  const [source, html] = await Promise.all([
+    readFile(new URL('../manager.js', import.meta.url), 'utf8'),
+    readFile(new URL('../manage.html', import.meta.url), 'utf8'),
+  ]);
+
+  // The window matches what the Progress calendar already shows: this training month, through today.
+  assert.match(source, /function backfillDates\(\)/);
+  assert.match(source, /new Date\(today\.getFullYear\(\), today\.getMonth\(\), 1, 12, 0, 0, 0\)/);
+  assert.match(source, /cursor\.getTime\(\) >= first\.getTime\(\)/);
+
+  // Only training days -- rest days for a profile don't get an offered pill.
+  assert.match(source, /if \(!plan\.exercises \|\| !plan\.exercises\.length\) return '';/);
+
+  // The store already rejects future dates server-side (normalizeWorkoutCompletion), and the
+  // window itself never walks past today, so there's no client-side future-date path to test here.
+
+  // Reuses the existing shared store, no parallel endpoint.
+  assert.match(source, /request\('\/api\/workout-history', \{\s*method: 'DELETE'/);
+  assert.match(source, /request\('\/api\/workout-history', \{\s*method: 'POST'/);
+  assert.match(source, /completionSource: 'backfill'/);
+
+  // Per profile: each pill is scoped to one profile, both render independently, and the source
+  // (including WHOOP) is visibly labeled so an existing WHOOP completion is never silently overwritten.
+  assert.match(source, /PROFILES\.map\(function \(profile\) \{ return renderBackfillPill\(profile, date\); \}\)/);
+  assert.match(source, /entry\.completionSource === 'whoop' \? ' whoop' : ''/);
+  assert.match(source, /function completionSourceLabel\(source\)/);
+  assert.match(source, /Confirmed by WHOOP/);
+
+  // It's a toggle: the same control marks and un-marks, keyed off current state, not two separate controls.
+  assert.match(source, /function toggleBackfill\(profile, key\)/);
+  assert.match(source, /var entry = historyEntry\(profile, key\);/);
+  assert.match(source, /entry\s*\n\s*\? request\('\/api\/workout-history', \{\s*\n\s*method: 'DELETE'/);
+
+  assert.match(html, /\.backfill-pill\.whoop/);
+  assert.match(html, /\.backfill-pill\.done/);
+});
+
 test('Workout Manager accepts a private fragment invite once and remembers the browser', async () => {
   const [source, html] = await Promise.all([
     readFile(new URL('../manager.js', import.meta.url), 'utf8'),
