@@ -32,11 +32,14 @@ test('Workout Manager leads with a complete week and previews the rotating acces
   assert.match(source, /function renderWeekProjection\(today\)/);
   assert.match(source, /data-week-offset="0"/);
   assert.match(source, /data-week-offset="1"/);
-  assert.match(source, /The first two movements stay consistent/);
+  assert.match(source, /Fixed movements stay put every week/);
   assert.match(source, /function rotatedPlan\(plan, date\)/);
-  // Push day has 4 exercises (military press is a fixed 3rd, not part of the rotation), so the
-  // rotating slot is index 3 there; Pull is still 3 exercises, rotating slot stays index 2.
-  assert.match(source, /var rotationIndex = plan\.name === 'Push' \? 3 : 2;/);
+  // Push day has two independent rotating slots (index 1: incline/military/dips on a 3-week
+  // cycle, index 2: lateral raise/triceps on a 2-week cycle); Pull still has one, at index 2.
+  // rotatedPlan() loops over accessoryRotation.slots rather than a hardcoded per-day index.
+  assert.match(source, /rotation\.slots\.length/);
+  assert.match(source, /result\.exercises\[slot\.exerciseIndex\] = clone\(slot\.cycleWeeks\[weekNumber % slot\.cycleWeeks\.length\]\)/);
+  assert.doesNotMatch(source, /rotationIndex/, 'the old hardcoded per-day-name index should be fully gone');
   assert.match(html, /\.projection-day/);
   assert.match(html, /\.movement\.rotating/);
 });

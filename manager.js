@@ -117,18 +117,23 @@
     var rotation = state.defaults.accessoryRotation;
     var startsOn;
     var weekNumber;
-    var cycle;
+    var slotIndex;
+    var slot;
     var result;
-    var rotationIndex = plan.name === 'Push' ? 3 : 2;
-    if (!rotation || !rotation.cycleWeeks || !rotation.cycleWeeks.length || !plan.exercises || plan.exercises.length <= rotationIndex) {
+    if (!rotation || !rotation.slots || !rotation.slots.length || !plan.exercises || !plan.exercises.length) {
       return clone(plan);
     }
     startsOn = dateFromKey(rotation.startsOn);
     weekNumber = Math.floor((mondayFor(date).getTime() - mondayFor(startsOn).getTime()) / (7 * 24 * 60 * 60 * 1000));
     if (weekNumber < 0) return clone(plan);
-    cycle = rotation.cycleWeeks[weekNumber % rotation.cycleWeeks.length];
     result = clone(plan);
-    if (cycle[plan.name]) result.exercises[rotationIndex] = clone(cycle[plan.name]);
+    for (slotIndex = 0; slotIndex < rotation.slots.length; slotIndex += 1) {
+      slot = rotation.slots[slotIndex];
+      if (!slot.cycleWeeks || !slot.cycleWeeks.length) continue;
+      if (plan.name === slot.planName && result.exercises.length > slot.exerciseIndex) {
+        result.exercises[slot.exerciseIndex] = clone(slot.cycleWeeks[weekNumber % slot.cycleWeeks.length]);
+      }
+    }
     return result;
   }
   function resolvedPlan(profile, date) {
@@ -270,7 +275,7 @@
       (state.weekOffset ? 'Next week' : 'This week') + '</h2><p class="sub">' + shortDate(monday) + ' — ' + shortDate(sunday) +
       '</p></div><div class="week-switch"><button data-week-offset="0" class="' + (!state.weekOffset ? 'active' : '') + '">This week</button>' +
       '<button data-week-offset="1" class="' + (state.weekOffset ? 'active' : '') + '">Next week</button></div></div>' +
-      '<div class="projection">' + rows + '</div><p class="rotation-note"><span>↻</span> The first two movements stay consistent. The third Push and Pull movement alternates weekly.</p></section>';
+      '<div class="projection">' + rows + '</div><p class="rotation-note"><span>↻</span> Fixed movements stay put every week. Rotating ones cycle automatically on their own schedule.</p></section>';
   }
   function renderExerciseEditor() {
     var plan = planTemplate(state.exerciseProfile, state.exercisePlan);
