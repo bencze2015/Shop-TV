@@ -20,6 +20,7 @@
         "Monday": {"name":"Push","exercises":[
           {"id":"db-bench-press","name":"Dumbbell Bench Press","sets":3,"reps":"8–12","restSeconds":90},
           {"id":"db-incline-press","name":"Incline Dumbbell Press","sets":3,"reps":"8–12","restSeconds":90},
+          {"id":"db-military-press","name":"Dumbbell Military Press","sets":3,"reps":"8–12","restSeconds":90},
           {"id":"db-lateral-raise","name":"Dumbbell Lateral Raise","sets":3,"reps":"12–15","restSeconds":60}
         ]},
         "Tuesday": {"name":"Rest","exercises":[]},
@@ -44,6 +45,7 @@
         "Monday": {"name":"Push","exercises":[
           {"id":"db-bench-press","name":"Dumbbell Bench Press","sets":3,"reps":"8–12","restSeconds":90},
           {"id":"db-incline-press","name":"Incline Dumbbell Press","sets":3,"reps":"8–12","restSeconds":90},
+          {"id":"db-military-press","name":"Dumbbell Military Press","sets":3,"reps":"8–12","restSeconds":90},
           {"id":"db-lateral-raise","name":"Dumbbell Lateral Raise","sets":3,"reps":"12–15","restSeconds":60}
         ]},
         "Tuesday": {"name":"Rest","exercises":[]},

@@ -105,14 +105,14 @@ test('the shared training week starts with Push on Monday', async () => {
   }
   assert.deepEqual(
     workouts.profiles.jordan.week.Monday.exercises.map((exercise) => exercise.name),
-    ['Dumbbell Bench Press', 'Incline Dumbbell Press', 'Dumbbell Lateral Raise']
+    ['Dumbbell Bench Press', 'Incline Dumbbell Press', 'Dumbbell Military Press', 'Dumbbell Lateral Raise']
   );
   assert.deepEqual(
     workouts.profiles.kelsey.week.Monday.exercises.map((exercise) => exercise.name),
-    ['Dumbbell Bench Press', 'Incline Dumbbell Press', 'Dumbbell Lateral Raise']
+    ['Dumbbell Bench Press', 'Incline Dumbbell Press', 'Dumbbell Military Press', 'Dumbbell Lateral Raise']
   );
   for (const profile of Object.values(workouts.profiles)) {
-    assert.equal(profile.week.Monday.exercises.length, 3);
+    assert.equal(profile.week.Monday.exercises.length, 4);
     assert.equal(profile.week.Wednesday.exercises.length, 3);
     assert.equal(profile.week.Friday.exercises.length, 3);
   }
@@ -169,7 +169,9 @@ test('the third Push and Pull movements alternate while the first two stay ancho
   context.setDay('Monday');
   assert.match(elements.content.innerHTML, /Dumbbell Bench Press/);
   assert.match(elements.content.innerHTML, /Incline Dumbbell Press/);
+  assert.match(elements.content.innerHTML, /Dumbbell Military Press/, 'military press is a fixed 3rd exercise, not part of the rotating slot');
   assert.match(elements.content.innerHTML, /Band Triceps Extension/);
+  assert.doesNotMatch(elements.content.innerHTML, /Dumbbell Lateral Raise/, 'the rotating 4th slot shows the accessory for this week, not both options');
 });
 
 test('TV client renders training, rest, progress, WHOOP, and set completion flows', async () => {
@@ -246,7 +248,7 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
   assert.doesNotMatch(elements.content.innerHTML, /Track individual sets/, 'set tracking is reachable in code but no longer promoted as a home-screen action');
   assert.match(elements.content.innerHTML, /Dumbbell Bench Press/);
   assert.match(elements.content.innerHTML, /Est\. time/);
-  assert.equal((elements.content.innerHTML.match(/class="ambient-move /g) || []).length, 3);
+  assert.equal((elements.content.innerHTML.match(/class="ambient-move /g) || []).length, 4);
 
   context.setTrackingMode('sets');
   assert.match(elements.content.innerHTML, /PUSH SESSION/);
