@@ -119,7 +119,8 @@
     var weekNumber;
     var cycle;
     var result;
-    if (!rotation || !rotation.cycleWeeks || !rotation.cycleWeeks.length || !plan.exercises || plan.exercises.length < 3) {
+    var rotationIndex = plan.name === 'Push' ? 3 : 2;
+    if (!rotation || !rotation.cycleWeeks || !rotation.cycleWeeks.length || !plan.exercises || plan.exercises.length <= rotationIndex) {
       return clone(plan);
     }
     startsOn = dateFromKey(rotation.startsOn);
@@ -127,7 +128,7 @@
     if (weekNumber < 0) return clone(plan);
     cycle = rotation.cycleWeeks[weekNumber % rotation.cycleWeeks.length];
     result = clone(plan);
-    if (cycle[plan.name]) result.exercises[2] = clone(cycle[plan.name]);
+    if (cycle[plan.name]) result.exercises[rotationIndex] = clone(cycle[plan.name]);
     return result;
   }
   function resolvedPlan(profile, date) {

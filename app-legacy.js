@@ -166,6 +166,7 @@
     var day;
     var plan;
     var accessory;
+    var rotationIndex;
     if (!rotation || !rotation.cycleWeeks || !rotation.cycleWeeks.length) return;
     startsOn = dateFromKey(rotation.startsOn);
     if (!startsOn) return;
@@ -178,8 +179,9 @@
         if (!data.profiles[targetProfileId].week.hasOwnProperty(day)) continue;
         plan = data.profiles[targetProfileId].week[day];
         accessory = cycle[plan.name];
-        if (accessory && plan.exercises && plan.exercises.length >= 3) {
-          plan.exercises[2] = cloneJson(accessory);
+        rotationIndex = plan.name === 'Push' ? 3 : 2;
+        if (accessory && plan.exercises && plan.exercises.length > rotationIndex) {
+          plan.exercises[rotationIndex] = cloneJson(accessory);
         }
       }
     }

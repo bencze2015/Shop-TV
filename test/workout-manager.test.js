@@ -34,6 +34,9 @@ test('Workout Manager leads with a complete week and previews the rotating acces
   assert.match(source, /data-week-offset="1"/);
   assert.match(source, /The first two movements stay consistent/);
   assert.match(source, /function rotatedPlan\(plan, date\)/);
+  // Push day has 4 exercises (military press is a fixed 3rd, not part of the rotation), so the
+  // rotating slot is index 3 there; Pull is still 3 exercises, rotating slot stays index 2.
+  assert.match(source, /var rotationIndex = plan\.name === 'Push' \? 3 : 2;/);
   assert.match(html, /\.projection-day/);
   assert.match(html, /\.movement\.rotating/);
 });
