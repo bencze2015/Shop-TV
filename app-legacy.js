@@ -161,27 +161,29 @@
     var rotation = data.accessoryRotation;
     var startsOn;
     var weekNumber;
-    var cycle;
+    var slotIndex;
+    var slot;
+    var accessory;
     var targetProfileId;
     var day;
     var plan;
-    var accessory;
-    var rotationIndex;
-    if (!rotation || !rotation.cycleWeeks || !rotation.cycleWeeks.length) return;
+    if (!rotation || !rotation.slots || !rotation.slots.length) return;
     startsOn = dateFromKey(rotation.startsOn);
     if (!startsOn) return;
     weekNumber = Math.floor((mondayFor(referenceDate).getTime() - mondayFor(startsOn).getTime()) / (7 * 24 * 60 * 60 * 1000));
     if (weekNumber < 0) return;
-    cycle = rotation.cycleWeeks[weekNumber % rotation.cycleWeeks.length];
-    for (targetProfileId in data.profiles) {
-      if (!data.profiles.hasOwnProperty(targetProfileId)) continue;
-      for (day in data.profiles[targetProfileId].week) {
-        if (!data.profiles[targetProfileId].week.hasOwnProperty(day)) continue;
-        plan = data.profiles[targetProfileId].week[day];
-        accessory = cycle[plan.name];
-        rotationIndex = plan.name === 'Push' ? 3 : 2;
-        if (accessory && plan.exercises && plan.exercises.length > rotationIndex) {
-          plan.exercises[rotationIndex] = cloneJson(accessory);
+    for (slotIndex = 0; slotIndex < rotation.slots.length; slotIndex += 1) {
+      slot = rotation.slots[slotIndex];
+      if (!slot.cycleWeeks || !slot.cycleWeeks.length) continue;
+      accessory = slot.cycleWeeks[weekNumber % slot.cycleWeeks.length];
+      for (targetProfileId in data.profiles) {
+        if (!data.profiles.hasOwnProperty(targetProfileId)) continue;
+        for (day in data.profiles[targetProfileId].week) {
+          if (!data.profiles[targetProfileId].week.hasOwnProperty(day)) continue;
+          plan = data.profiles[targetProfileId].week[day];
+          if (plan.name === slot.planName && plan.exercises && plan.exercises.length > slot.exerciseIndex) {
+            plan.exercises[slot.exerciseIndex] = cloneJson(accessory);
+          }
         }
       }
     }
@@ -693,17 +695,23 @@
     var rotation = baseData.accessoryRotation;
     var startsOn;
     var weekNumber;
-    var cycle;
+    var slotIndex;
+    var slot;
     var result = cloneJson(plan || { name: 'Rest', exercises: [] });
-    if (!rotation || !rotation.cycleWeeks || !rotation.cycleWeeks.length ||
-        !result.exercises || result.exercises.length < 3) return result;
+    if (!rotation || !rotation.slots || !rotation.slots.length ||
+        !result.exercises || !result.exercises.length) return result;
     startsOn = dateFromKey(rotation.startsOn);
     if (!startsOn) return result;
     weekNumber = Math.floor((mondayFor(date).getTime() - mondayFor(startsOn).getTime()) /
       (7 * 24 * 60 * 60 * 1000));
     if (weekNumber < 0) return result;
-    cycle = rotation.cycleWeeks[weekNumber % rotation.cycleWeeks.length];
-    if (cycle[result.name]) result.exercises[2] = cloneJson(cycle[result.name]);
+    for (slotIndex = 0; slotIndex < rotation.slots.length; slotIndex += 1) {
+      slot = rotation.slots[slotIndex];
+      if (!slot.cycleWeeks || !slot.cycleWeeks.length) continue;
+      if (result.name === slot.planName && result.exercises.length > slot.exerciseIndex) {
+        result.exercises[slot.exerciseIndex] = cloneJson(slot.cycleWeeks[weekNumber % slot.cycleWeeks.length]);
+      }
+    }
     return result;
   }
 

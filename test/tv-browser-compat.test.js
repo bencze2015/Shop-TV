@@ -105,14 +105,14 @@ test('the shared training week starts with Push on Monday', async () => {
   }
   assert.deepEqual(
     workouts.profiles.jordan.week.Monday.exercises.map((exercise) => exercise.name),
-    ['Dumbbell Bench Press', 'Incline Dumbbell Press', 'Dumbbell Military Press', 'Dumbbell Lateral Raise']
+    ['Dumbbell Bench Press', 'Incline Dumbbell Press', 'Dumbbell Lateral Raise']
   );
   assert.deepEqual(
     workouts.profiles.kelsey.week.Monday.exercises.map((exercise) => exercise.name),
-    ['Dumbbell Bench Press', 'Incline Dumbbell Press', 'Dumbbell Military Press', 'Dumbbell Lateral Raise']
+    ['Dumbbell Bench Press', 'Incline Dumbbell Press', 'Dumbbell Lateral Raise']
   );
   for (const profile of Object.values(workouts.profiles)) {
-    assert.equal(profile.week.Monday.exercises.length, 4);
+    assert.equal(profile.week.Monday.exercises.length, 3);
     assert.equal(profile.week.Wednesday.exercises.length, 3);
     assert.equal(profile.week.Friday.exercises.length, 3);
   }
@@ -166,12 +166,93 @@ test('the third Push and Pull movements alternate while the first two stay ancho
   assert.match(elements.content.innerHTML, /Dumbbell Hammer Curl/);
   assert.doesNotMatch(elements.content.innerHTML, />Dumbbell Curl</);
 
+  // Aug 19, 2026 falls in the week of Aug 17 -- week 1 since the Aug 10 startsOn anchor.
+  // Push slot 2 (3-week: Incline/Military/Dips) lands on index 1 -> Military Press.
+  // Push slot 3 (2-week: Lateral Raise/Band Triceps Extension) lands on index 1 -> Band Triceps Extension.
   context.setDay('Monday');
-  assert.match(elements.content.innerHTML, /Dumbbell Bench Press/);
-  assert.match(elements.content.innerHTML, /Incline Dumbbell Press/);
-  assert.match(elements.content.innerHTML, /Dumbbell Military Press/, 'military press is a fixed 3rd exercise, not part of the rotating slot');
-  assert.match(elements.content.innerHTML, /Band Triceps Extension/);
-  assert.doesNotMatch(elements.content.innerHTML, /Dumbbell Lateral Raise/, 'the rotating 4th slot shows the accessory for this week, not both options');
+  assert.match(elements.content.innerHTML, /Dumbbell Bench Press/, 'slot 1 is fixed every week');
+  assert.match(elements.content.innerHTML, /Dumbbell Military Press/, 'slot 2 this week');
+  assert.match(elements.content.innerHTML, /Band Triceps Extension/, 'slot 3 this week');
+  assert.doesNotMatch(elements.content.innerHTML, /Incline Dumbbell Press/, 'slot 2 is a real rotation now -- incline is not guaranteed weekly');
+  assert.doesNotMatch(elements.content.innerHTML, /Dumbbell Lateral Raise/, 'slot 3 shows this week\'s accessory, not both options');
+  assert.doesNotMatch(elements.content.innerHTML, />Dips</, 'slot 2 this week is military press, not dips');
+  assert.equal((elements.content.innerHTML.match(/class="ambient-move /g) || []).length, 3, 'push day is still capped at three exercises');
+});
+
+test('the two Push rotation slots cycle independently -- a 3-week and a 2-week cycle desync into six distinct weeks', async () => {
+  const source = await readFile(new URL('../app-legacy.js', import.meta.url), 'utf8');
+  const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
+
+  class FakeXmlHttpRequest {
+    open(_method, url) { this.url = url; }
+    send() {
+      this.readyState = 4;
+      this.status = 200;
+      if (this.url.startsWith('/workouts.json')) this.responseText = JSON.stringify(workouts);
+      else if (this.url.startsWith('/api/workout-plan')) {
+        this.responseText = JSON.stringify({
+          schemaVersion: 1,
+          revision: 0,
+          sharedSchedule: true,
+          profileWeeks: {},
+          dateOverrides: {}
+        });
+      } else this.responseText = JSON.stringify({ workouts: [], trends: {} });
+      this.onreadystatechange();
+    }
+  }
+
+  // Monday of each of the first six weeks since the Aug 10, 2026 startsOn anchor.
+  const mondays = [
+    '2026-08-10', '2026-08-17', '2026-08-24', '2026-08-31', '2026-09-07', '2026-09-14',
+  ];
+  const expected = [
+    ['Incline Dumbbell Press', 'Dumbbell Lateral Raise'],
+    ['Dumbbell Military Press', 'Band Triceps Extension'],
+    ['Dips', 'Dumbbell Lateral Raise'],
+    ['Incline Dumbbell Press', 'Band Triceps Extension'],
+    ['Dumbbell Military Press', 'Dumbbell Lateral Raise'],
+    ['Dips', 'Band Triceps Extension'],
+  ];
+
+  for (let week = 0; week < mondays.length; week += 1) {
+    const elements = createElementMap();
+    const TestDate = mutableDate(mondays[week] + 'T12:00:00-07:00');
+    const context = {
+      console,
+      document: { getElementById: (id) => elements[id], addEventListener() {} },
+      history: { replaceState() {} },
+      location: { search: '', pathname: '/' },
+      localStorage: { getItem() { return null; }, setItem() {} },
+      XMLHttpRequest: FakeXmlHttpRequest,
+      setInterval() {},
+      setTimeout() { return 1; },
+      clearTimeout() {},
+      Date: TestDate,
+    };
+    context.window = context;
+    vm.runInNewContext(source, context);
+
+    assert.match(elements.content.innerHTML, /Dumbbell Bench Press/, `week ${week}: slot 1 always fixed`);
+    assert.match(
+      elements.content.innerHTML,
+      new RegExp(expected[week][0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      `week ${week}: slot 2 should be ${expected[week][0]}`
+    );
+    assert.match(
+      elements.content.innerHTML,
+      new RegExp(expected[week][1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      `week ${week}: slot 3 should be ${expected[week][1]}`
+    );
+    assert.equal(
+      (elements.content.innerHTML.match(/class="ambient-move /g) || []).length,
+      3,
+      `week ${week}: still exactly three exercises`
+    );
+  }
+
+  // Week 6 (index 5) is the last of the six unique combinations; week 7 (index 6, not tested
+  // above) would repeat week 0's combination -- LCM(3, 2) = 6.
 });
 
 test('TV client renders training, rest, progress, WHOOP, and set completion flows', async () => {
@@ -248,7 +329,7 @@ test('TV client renders training, rest, progress, WHOOP, and set completion flow
   assert.doesNotMatch(elements.content.innerHTML, /Track individual sets/, 'set tracking is reachable in code but no longer promoted as a home-screen action');
   assert.match(elements.content.innerHTML, /Dumbbell Bench Press/);
   assert.match(elements.content.innerHTML, /Est\. time/);
-  assert.equal((elements.content.innerHTML.match(/class="ambient-move /g) || []).length, 4);
+  assert.equal((elements.content.innerHTML.match(/class="ambient-move /g) || []).length, 3);
 
   context.setTrackingMode('sets');
   assert.match(elements.content.innerHTML, /PUSH SESSION/);
