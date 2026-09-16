@@ -108,6 +108,40 @@ test('the phone breakpoint fixes truncation bugs without touching the TV base ty
   assert.doesNotMatch(manageHtml, /max-width:600px/);
 });
 
+test('the standalone safe-area top padding applies unconditionally and has a buffer past the raw inset', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+
+  // Regression guard: this used to be gated on `display-mode:standalone`, which is not reliably
+  // reported for apple-mobile-web-app-capable home-screen launches on every iOS/WebKit build --
+  // gating on it left the top inset silently unapplied, which is what let the eyebrow line render
+  // under the translucent status bar/Dynamic Island in the first place. (Checked against an actual
+  // @media rule, not just the string anywhere, since the explanatory comment above mentions it too.)
+  assert.doesNotMatch(html, /@media\([^)]*display-mode:standalone/);
+
+  // The fix: safe-area padding at phone width, unconditional, with a buffer past the bare inset
+  // (the translucent status bar's edge is a soft boundary, not a hard cutoff).
+  assert.match(html, /body\{padding:max\(20px,calc\(env\(safe-area-inset-top\) \+ 14px\)\)/);
+});
+
+test('the Manager link is phone-only, carries no token, and cannot appear on the TV', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+
+  // Hidden unconditionally (this rule sits outside every media query) -- the TV must never be
+  // able to show or focus it, regardless of what any narrower breakpoint later does.
+  const firstMediaQueryIndex = html.indexOf('@media(max-height:760px)');
+  const baseCss = html.slice(0, firstMediaQueryIndex);
+  assert.match(baseCss, /\.manager-link\{display:none\}/, 'must be display:none in the unconditional base CSS');
+
+  // Only turned on inside the phone breakpoint, a width the TV never renders at.
+  const phoneBlockStart = html.indexOf('@media(max-width:600px){');
+  const phoneBlock = html.slice(phoneBlockStart, html.indexOf('</style>', phoneBlockStart));
+  assert.match(phoneBlock, /\.manager-link\{display:block/);
+
+  // Plain link, no invite fragment or token -- the Manager handles its own auth.
+  assert.match(html, /<a class="manager-link" href="\/manage\.html">Workout Manager<\/a>/);
+  assert.doesNotMatch(html, /manager-link"[^>]*#invite/);
+});
+
 test('every configured training day stays within the five-row TV density budget', async () => {
   const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
 
