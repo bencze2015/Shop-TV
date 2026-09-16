@@ -79,6 +79,35 @@ test('desktop TV layout is locked to one viewport with flexible exercise rows', 
   assert.doesNotMatch(html, /max-width:(?:1000|1100|1420)px/);
 });
 
+test('the phone breakpoint fixes truncation bugs without touching the TV base type scale', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+
+  // The TV/desktop base rules are unconditional (outside any media query) and must keep their
+  // original large sizing -- this is what actually guarantees no TV regression, not just the
+  // presence of a narrow media query.
+  assert.match(html, /\.ambient-name\{[^}]*font-size:clamp\(30px,2\.7vw,42px\)/, 'TV ambient-name size unchanged');
+  assert.match(html, /\.exercise-name\{[^}]*font-size:clamp\(30px,2\.5vw,40px\)/, 'TV exercise-name size unchanged');
+  assert.match(html, /\.welcome\{margin-top:7px;font-size:34px/, 'TV welcome heading size unchanged');
+  assert.match(html, /\.welcome\.progress-welcome\{font-size:29px;letter-spacing:\.035em;white-space:nowrap\}/, 'TV progress heading still nowrap at base');
+  assert.match(html, /\.calendar-key\{color:#8b9690;font-size:18px/, 'TV calendar legend size unchanged');
+
+  // The phone breakpoint is narrower than, and separate from, the existing tablet/layout
+  // breakpoint, and can never match a 1920px TV viewport.
+  assert.match(html, /@media\(max-width:600px\)\{/);
+  const phoneBlockStart = html.indexOf('@media(max-width:600px){');
+  const phoneBlock = html.slice(phoneBlockStart, html.indexOf('</style>', phoneBlockStart));
+
+  // The specific fixes for the two reported truncation bugs, plus the calendar legend overflow
+  // found during verification, all live inside that phone-only block.
+  assert.match(phoneBlock, /\.ambient-name\{font-size:clamp\(16px,4\.5vw,20px\);white-space:normal/);
+  assert.match(phoneBlock, /\.welcome\.progress-welcome\{font-size:22px;white-space:normal/);
+  assert.match(phoneBlock, /\.calendar-key\{font-size:11px;white-space:normal/);
+
+  // manage.html (the phone-first Manager) is untouched by this -- it already has its own layout.
+  const manageHtml = await readFile(new URL('../manage.html', import.meta.url), 'utf8');
+  assert.doesNotMatch(manageHtml, /max-width:600px/);
+});
+
 test('every configured training day stays within the five-row TV density budget', async () => {
   const workouts = JSON.parse(await readFile(new URL('../workouts.json', import.meta.url), 'utf8'));
 
