@@ -254,6 +254,9 @@
     .day-nav{display:none}
     .day-nav button{margin-left:5px;border:1px solid #27312c;border-radius:7px;background:#0d1210;color:#7f8984;padding:6px 9px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
     .day-nav button.today{color:#dfe6e2;border-color:#3b4942}
+    /* Hidden unconditionally -- the TV must never show or focus this. Only the phone breakpoint
+       below turns it on, since a phone is the only place it's actually useful. */
+    .manager-link{display:none}
     .toast{position:fixed;z-index:20;left:50%;bottom:max(48px,env(safe-area-inset-bottom));display:none;min-width:280px;padding:11px 16px;border:1px solid #46564e;border-radius:999px;background:#121915;color:#dfe7e2;font-size:10px;font-weight:850;letter-spacing:.1em;text-align:center;text-transform:uppercase;transform:translateX(-50%);box-shadow:0 12px 40px rgba(0,0,0,.45)}
     .toast.visible{display:block}
     .remote-confirm{position:fixed;z-index:90;top:0;right:0;bottom:0;left:0;display:none;align-items:center;justify-content:center;background:rgba(4,8,6,.88);text-align:center}
@@ -349,14 +352,26 @@
       .rest-word{font-size:clamp(34px,9vw,48px)}
       .next-name{font-size:clamp(18px,5vw,24px)}
       .celebration-title{font-size:clamp(32px,9vw,44px)}
+      /* Discreet link to the Manager -- phone-only, since that's the only place it's useful
+         (nothing on the TV should ever navigate away from the kiosk view). Deliberately muted:
+         dimmer than even the .kicker eyebrow color, no border/background, small caps. */
+      .manager-link{display:block;margin:14px 2px 0;color:#4c554f;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;text-align:center}
     }
 
     /* Safe-area padding for an iOS "Add to Home Screen" standalone launch (status-bar-style is
-       black-translucent, so content draws under the notch/status bar without this). Scoped to
-       phone width AND standalone display-mode together, so it is inert in a normal Safari tab
-       and can never apply to the TV, which is never launched as an installed home-screen app. */
-    @media(max-width:600px) and (display-mode:standalone){
-      body{padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))}
+       black-translucent, so content draws under the notch/Dynamic Island/status bar without
+       this). Deliberately NOT gated on `display-mode:standalone` -- that media feature is not
+       reliably reported for apple-mobile-web-app-capable home-screen launches on every iOS/
+       WebKit build, and gating on it left the top inset silently unapplied, which is what made
+       the eyebrow line render under the translucent status bar. env(safe-area-inset-*) itself
+       already resolves to 0 in a normal Safari tab (there's no notch/status-bar overlap to
+       account for there), so this is safe to apply at phone width unconditionally -- and it is
+       still scoped to max-width:600px, a width the TV never renders at, so it can never affect
+       the TV either way. The top inset also gets a 14px buffer past the raw safe-area value: the
+       translucent status bar's edge is a soft/blurred boundary, not a hard cutoff, so sitting
+       flush against the bare inset still reads as faded. */
+    @media(max-width:600px){
+      body{padding:max(20px,calc(env(safe-area-inset-top) + 14px)) max(20px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))}
     }
   </style>
 </head>
@@ -392,6 +407,7 @@
         <button onclick="changeDay(1)">Day ›</button>
       </div>
     </footer>
+    <a class="manager-link" href="/manage.html">Workout Manager</a>
   </main>
   <div class="toast" id="toast"></div>
   <div class="remote-confirm" id="remoteConfirm">
