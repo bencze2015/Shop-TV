@@ -607,4 +607,11 @@
   }
   if (state.token) load();
   else showLock();
+
+  // Modest shell cache for fast opens on the home-screen icon. Scoped to this page only, and
+  // registration failing (older browser, private mode, etc.) is a non-issue -- the app works
+  // exactly the same either way, just without the cached-shell speed-up.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw-manager.js', { scope: '/manage.html' }).catch(function () {});
+  }
 }());

@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#080a0c">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
+  <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-167.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-120.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Shop TV">
   <title>Shop TV Training</title>
   <style>
     *{box-sizing:border-box}
@@ -246,7 +254,7 @@
     .day-nav{display:none}
     .day-nav button{margin-left:5px;border:1px solid #27312c;border-radius:7px;background:#0d1210;color:#7f8984;padding:6px 9px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
     .day-nav button.today{color:#dfe6e2;border-color:#3b4942}
-    .toast{position:fixed;z-index:20;left:50%;bottom:48px;display:none;min-width:280px;padding:11px 16px;border:1px solid #46564e;border-radius:999px;background:#121915;color:#dfe7e2;font-size:10px;font-weight:850;letter-spacing:.1em;text-align:center;text-transform:uppercase;transform:translateX(-50%);box-shadow:0 12px 40px rgba(0,0,0,.45)}
+    .toast{position:fixed;z-index:20;left:50%;bottom:max(48px,env(safe-area-inset-bottom));display:none;min-width:280px;padding:11px 16px;border:1px solid #46564e;border-radius:999px;background:#121915;color:#dfe7e2;font-size:10px;font-weight:850;letter-spacing:.1em;text-align:center;text-transform:uppercase;transform:translateX(-50%);box-shadow:0 12px 40px rgba(0,0,0,.45)}
     .toast.visible{display:block}
     .remote-confirm{position:fixed;z-index:90;top:0;right:0;bottom:0;left:0;display:none;align-items:center;justify-content:center;background:rgba(4,8,6,.88);text-align:center}
     .remote-confirm.visible{display:flex}
@@ -341,6 +349,14 @@
       .rest-word{font-size:clamp(34px,9vw,48px)}
       .next-name{font-size:clamp(18px,5vw,24px)}
       .celebration-title{font-size:clamp(32px,9vw,44px)}
+    }
+
+    /* Safe-area padding for an iOS "Add to Home Screen" standalone launch (status-bar-style is
+       black-translucent, so content draws under the notch/status bar without this). Scoped to
+       phone width AND standalone display-mode together, so it is inert in a normal Safari tab
+       and can never apply to the TV, which is never launched as an installed home-screen app. */
+    @media(max-width:600px) and (display-mode:standalone){
+      body{padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))}
     }
   </style>
 </head>
